@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>單字打地鼠</title>
+</head>
+<body>
+<style>
+  #mole-game-root {
+    --sky: #bfe6f5;
+    --grass: #6fae4f;
+    --grass-dark: #558a3d;
+    --dirt: #7a5233;
+    --dirt-dark: #5c3d26;
+    --mole-body: #8b7256;
+    --mole-belly: #d9c7a8;
+    --paper: #fffaf0;
+    --ink: #33281c;
+    --red: #e0523f;
+    --orange: #f2884b;
+    --leaf: #4a7c4e;
+    font-family: 'Baloo 2', 'Fredoka', 'Comic Sans MS', sans-serif;
+    background: linear-gradient(180deg, var(--sky) 0%, var(--sky) 70px, var(--grass) 70px, var(--grass-dark) 100%);
+    border-radius: 20px;
+    padding: 18px 16px 24px;
+    color: var(--ink);
+    max-width: 640px;
+    margin: 0 auto;
+    box-sizing: border-box;
+    position: relative;
+    overflow: hidden;
+  }
+  #mole-game-root * { box-sizing: border-box; }
+
+  .mg-header { text-align: center; margin-bottom: 8px; }
+  .mg-title { font-size: 25px; font-weight: 800; color: #2f4a20; margin: 0; text-shadow: 0 1px 0 rgba(255,255,255,0.4); }
+  .mg-subtitle { font-size: 13px; color: #2f4a20; opacity: 0.85; margin-top: 2px; }
+
+  .mg-controls { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center; margin: 12px 0 10px; }
+  .mg-control-group { display: flex; align-items: center; gap: 6px; background: var(--paper); border: 2px solid var(--dirt); border-radius: 999px; padding: 5px 10px 5px 12px; }
+  .mg-control-label { font-size: 12px; font-weight: 700; color: var(--dirt-dark); }
+  .mg-select { border: none; background: transparent; font-family: inherit; font-size: 13px; font-weight: 700; color: var(--dirt-dark); padding: 4px 6px; cursor: pointer; }
+  .mg-level-btns { display: flex; gap: 4px; }
+  .mg-level-btn { border: none; border-radius: 999px; padding: 5px 12px; font-size: 12px; font-weight: 700; cursor: pointer; background: transparent; color: var(--dirt-dark); }
+  .mg-level-btn.active { background: var(--leaf); color: white; }
+  .mg-level-btn[data-level="hard"].active { background: var(--red); }
+  .mg-level-btn[data-level="medium"].active { background: var(--orange); }
+
+  .mg-stats { display: flex; justify-content: center; gap: 10px; margin: 6px 0 14px; }
+  .mg-pill { background: var(--paper); border: 2px solid var(--dirt); border-radius: 999px; padding: 6px 14px; font-size: 13px; font-weight: 700; color: var(--dirt-dark); display: flex; align-items: center; gap: 6px; }
+
+  .mg-prompt-row { display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .mg-prompt {
+    background: var(--paper);
+    border: 3px solid var(--dirt);
+    border-radius: 16px;
+    padding: 10px 22px;
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--dirt-dark);
+    min-width: 140px;
+    text-align: center;
+  }
+  .mg-replay-btn {
+    background: var(--paper);
+    border: 2px solid var(--dirt);
+    border-radius: 999px;
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+    cursor: pointer;
+  }
+
+  .mg-timebar-wrap {
+    background: rgba(255,255,255,0.5);
+    border-radius: 999px;
+    height: 10px;
+    margin: 0 auto 16px;
+    max-width: 360px;
+    overflow: hidden;
+    border: 1px solid rgba(0,0,0,0.1);
+  }
+  .mg-timebar {
+    height: 100%;
+    background: linear-gradient(90deg, #7fd858, #f0b429);
+    width: 100%;
+    transition: width linear;
+  }
+
+  .mg-playfield { position: relative; }
+
+  .mg-field {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    max-width: 420px;
+    margin: 0 auto;
+  }
+
+  .mg-hole {
+    position: relative;
+    aspect-ratio: 1 / 0.85;
+    cursor: pointer;
+  }
+
+  .mg-hole-dirt {
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    transform: translateX(-50%);
+    width: 92%;
+    height: 55%;
+    background: radial-gradient(ellipse at center, var(--dirt) 0%, var(--dirt-dark) 100%);
+    border-radius: 50%;
+    box-shadow: inset 0 6px 10px rgba(0,0,0,0.35);
+  }
+
+  .mg-mole {
+    position: absolute;
+    left: 50%;
+    bottom: 8%;
+    transform: translate(-50%, 100%);
+    width: 78%;
+    aspect-ratio: 1/1;
+    background: var(--mole-body);
+    border-radius: 50% 50% 45% 45%;
+    transition: transform 0.25s cubic-bezier(.3,1.5,.4,1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    box-shadow: inset 0 -6px 0 rgba(0,0,0,0.15);
+  }
+
+  .mg-hole.up .mg-mole { transform: translate(-50%, 6%); }
+  .mg-hole.hit .mg-mole { transform: translate(-50%, 100%) scale(0.8); transition: transform 0.2s ease-in; }
+  .mg-hole.miss .mg-mole { transform: translate(-50%, 100%); }
+
+  .mg-mole-belly {
+    width: 60%;
+    height: 45%;
+    background: var(--mole-belly);
+    border-radius: 50%;
+    position: absolute;
+    bottom: 8%;
+  }
+
+  .mg-mole-content {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    padding-top: 4px;
+  }
+
+  .mg-mole-emoji { font-size: 22px; line-height: 1; }
+  .mg-mole-zh { font-size: 11px; font-weight: 800; color: #3a2b1e; background: rgba(255,255,255,0.85); border-radius: 6px; padding: 1px 4px; margin-top: 2px; }
+
+  .mg-hole.correct-reveal .mg-mole { box-shadow: 0 0 0 4px #ffd54a, inset 0 -6px 0 rgba(0,0,0,0.15); }
+
+  .mg-hole.hit .mg-mole-content::after { content: "✨"; position: absolute; top: -14px; left: 50%; transform: translateX(-50%); font-size: 18px; }
+
+  .mg-footer { display: flex; justify-content: center; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+  .mg-btn { background: var(--leaf); color: white; border: none; border-radius: 999px; padding: 10px 22px; font-size: 14px; font-weight: 700; cursor: pointer; box-shadow: 0 3px 0 #375c3a; }
+  .mg-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #375c3a; }
+  .mg-btn.secondary { background: var(--paper); color: var(--dirt-dark); box-shadow: 0 3px 0 var(--dirt); border: 2px solid var(--dirt); }
+
+  .mg-win-overlay { position: absolute; inset: 0; background: rgba(255, 250, 240, 0.97); display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; border-radius: 20px; padding: 20px; z-index: 5; }
+  .mg-win-overlay.show { display: flex; }
+  .mg-win-emoji { font-size: 48px; margin-bottom: 8px; }
+  .mg-win-title { font-size: 24px; font-weight: 800; color: var(--dirt-dark); margin: 0 0 4px; }
+  .mg-win-sub { font-size: 14px; color: #5a6b4f; margin-bottom: 16px; }
+  .mg-stars { font-size: 26px; margin-bottom: 12px; letter-spacing: 4px; }
+
+  .mg-start-overlay { position: absolute; inset: 0; background: rgba(255, 250, 240, 0.97); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; border-radius: 20px; padding: 20px; z-index: 6; }
+  .mg-start-overlay.hide { display: none; }
+</style>
+
+<div id="mole-game-root">
+  <div class="mg-header">
+    <p class="mg-title">單字打地鼠 🔨</p>
+    <p class="mg-subtitle">聽到英文單字，打對意思的地鼠洞！</p>
+  </div>
+
+  <div class="mg-controls">
+    <div class="mg-control-group">
+      <span class="mg-control-label">主題</span>
+      <select class="mg-select" id="mg-topic"></select>
+    </div>
+    <div class="mg-control-group">
+      <span class="mg-control-label">難度</span>
+      <div class="mg-level-btns" id="mg-levels">
+        <button class="mg-level-btn" data-level="easy">普通</button>
+        <button class="mg-level-btn" data-level="medium">高級</button>
+        <button class="mg-level-btn" data-level="hard">困難</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="mg-stats">
+    <div class="mg-pill">⭐ <span id="mg-score">0</span></div>
+    <div class="mg-pill">🎯 <span id="mg-round">0</span>/<span id="mg-total-rounds">0</span></div>
+    <div class="mg-pill">🔥 <span id="mg-streak">0</span></div>
+  </div>
+
+  <div class="mg-prompt-row">
+    <div class="mg-prompt" id="mg-prompt">?</div>
+    <button class="mg-replay-btn" id="mg-replay" title="再聽一次">🔊</button>
+  </div>
+
+  <div class="mg-timebar-wrap"><div class="mg-timebar" id="mg-timebar"></div></div>
+
+  <div class="mg-playfield" id="mg-playfield">
+    <div class="mg-field" id="mg-field"></div>
+
+    <div class="mg-win-overlay" id="mg-win">
+      <div class="mg-win-emoji">🏆</div>
+      <p class="mg-win-title">遊戲結束！</p>
+      <div class="mg-stars" id="mg-stars"></div>
+      <p class="mg-win-sub" id="mg-win-detail"></p>
+      <button class="mg-btn" id="mg-play-again">再玩一次</button>
+    </div>
+
+    <div class="mg-start-overlay" id="mg-start">
+      <div class="mg-win-emoji">🔨</div>
+      <p class="mg-win-title">準備好了嗎？</p>
+      <p class="mg-win-sub">選好上面的主題和難度，再點下面開始</p>
+      <button class="mg-btn" id="mg-start-btn">開始遊戲</button>
+    </div>
+  </div>
+
+  <div class="mg-footer">
+    <button class="mg-btn secondary" id="mg-restart">重新開始</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  const TOPICS = {
+    fruit: { label: "水果", words: [
+      { en: "apple", zh: "蘋果", emoji: "🍎" }, { en: "banana", zh: "香蕉", emoji: "🍌" },
+      { en: "grape", zh: "葡萄", emoji: "🍇" }, { en: "watermelon", zh: "西瓜", emoji: "🍉" },
+      { en: "strawberry", zh: "草莓", emoji: "🍓" }, { en: "orange", zh: "柳橙", emoji: "🍊" },
+      { en: "lemon", zh: "檸檬", emoji: "🍋" }, { en: "peach", zh: "水蜜桃", emoji: "🍑" },
+      { en: "pineapple", zh: "鳳梨", emoji: "🍍" }, { en: "mango", zh: "芒果", emoji: "🥭" },
+      { en: "pear", zh: "梨子", emoji: "🍐" }, { en: "cherry", zh: "櫻桃", emoji: "🍒" },
+    ]},
+    animal: { label: "動物", words: [
+      { en: "dog", zh: "狗", emoji: "🐶" }, { en: "cat", zh: "貓", emoji: "🐱" },
+      { en: "bird", zh: "鳥", emoji: "🐦" }, { en: "fish", zh: "魚", emoji: "🐟" },
+      { en: "pig", zh: "豬", emoji: "🐷" }, { en: "cow", zh: "牛", emoji: "🐮" },
+      { en: "horse", zh: "馬", emoji: "🐴" }, { en: "duck", zh: "鴨子", emoji: "🦆" },
+      { en: "rabbit", zh: "兔子", emoji: "🐰" }, { en: "tiger", zh: "老虎", emoji: "🐯" },
+      { en: "lion", zh: "獅子", emoji: "🦁" }, { en: "elephant", zh: "大象", emoji: "🐘" },
+      { en: "monkey", zh: "猴子", emoji: "🐵" }, { en: "panda", zh: "熊貓", emoji: "🐼" },
+      { en: "frog", zh: "青蛙", emoji: "🐸" },
+    ]},
+    color: { label: "顏色與形狀", words: [
+      { en: "red", zh: "紅色", emoji: "🔴" }, { en: "blue", zh: "藍色", emoji: "🔵" },
+      { en: "yellow", zh: "黃色", emoji: "🟡" }, { en: "green", zh: "綠色", emoji: "🟢" },
+      { en: "black", zh: "黑色", emoji: "⚫" }, { en: "white", zh: "白色", emoji: "⚪" },
+      { en: "brown", zh: "棕色", emoji: "🟤" }, { en: "pink", zh: "粉紅色", emoji: "🩷" },
+      { en: "purple", zh: "紫色", emoji: "🟣" }, { en: "orange", zh: "橘色", emoji: "🟠" },
+      { en: "circle", zh: "圓形", emoji: "⭕" }, { en: "square", zh: "正方形", emoji: "🟥" },
+    ]},
+    body: { label: "身體", words: [
+      { en: "head", zh: "頭" }, { en: "hair", zh: "頭髮" }, { en: "face", zh: "臉" },
+      { en: "eye", zh: "眼睛" }, { en: "ear", zh: "耳朵" }, { en: "nose", zh: "鼻子" },
+      { en: "mouth", zh: "嘴巴" }, { en: "neck", zh: "脖子" }, { en: "arm", zh: "手臂" },
+      { en: "hand", zh: "手" }, { en: "finger", zh: "手指" }, { en: "leg", zh: "腿" },
+      { en: "foot", zh: "腳" }, { en: "knee", zh: "膝蓋" },
+    ]},
+    school: { label: "學校與文具", words: [
+      { en: "school", zh: "學校", emoji: "🏫" }, { en: "student", zh: "學生", emoji: "🧑‍🎓" },
+      { en: "teacher", zh: "老師", emoji: "🧑‍🏫" }, { en: "book", zh: "書", emoji: "📖" },
+      { en: "pencil", zh: "鉛筆", emoji: "✏️" }, { en: "eraser", zh: "橡皮擦" },
+      { en: "ruler", zh: "尺" }, { en: "bag", zh: "書包", emoji: "🎒" },
+      { en: "desk", zh: "書桌" }, { en: "chair", zh: "椅子", emoji: "🪑" },
+      { en: "classroom", zh: "教室" }, { en: "notebook", zh: "筆記本", emoji: "📓" },
+      { en: "scissors", zh: "剪刀", emoji: "✂️" }, { en: "glue", zh: "膠水" },
+    ]},
+    food: { label: "食物與飲料", words: [
+      { en: "rice", zh: "飯", emoji: "🍚" }, { en: "bread", zh: "麵包", emoji: "🍞" },
+      { en: "egg", zh: "蛋", emoji: "🥚" }, { en: "milk", zh: "牛奶", emoji: "🥛" },
+      { en: "juice", zh: "果汁", emoji: "🧃" }, { en: "water", zh: "水", emoji: "💧" },
+      { en: "cake", zh: "蛋糕", emoji: "🍰" }, { en: "soup", zh: "湯", emoji: "🥣" },
+      { en: "noodle", zh: "麵", emoji: "🍜" }, { en: "chicken", zh: "雞肉", emoji: "🍗" },
+      { en: "vegetable", zh: "蔬菜", emoji: "🥦" }, { en: "candy", zh: "糖果", emoji: "🍬" },
+    ]},
+    home: { label: "家具與居家", words: [
+      { en: "house", zh: "房子", emoji: "🏠" }, { en: "room", zh: "房間" },
+      { en: "bed", zh: "床", emoji: "🛏️" }, { en: "table", zh: "桌子" },
+      { en: "chair", zh: "椅子", emoji: "🪑" }, { en: "door", zh: "門", emoji: "🚪" },
+      { en: "window", zh: "窗戶" }, { en: "kitchen", zh: "廚房" },
+      { en: "bathroom", zh: "浴室" }, { en: "TV", zh: "電視", emoji: "📺" },
+      { en: "phone", zh: "電話", emoji: "📱" }, { en: "lamp", zh: "檯燈", emoji: "💡" },
+    ]},
+    weather: { label: "天氣與自然", words: [
+      { en: "sun", zh: "太陽", emoji: "☀️" }, { en: "moon", zh: "月亮", emoji: "🌙" },
+      { en: "star", zh: "星星", emoji: "⭐" }, { en: "rain", zh: "雨", emoji: "🌧️" },
+      { en: "snow", zh: "雪", emoji: "❄️" }, { en: "wind", zh: "風", emoji: "💨" },
+      { en: "cloud", zh: "雲", emoji: "☁️" }, { en: "sky", zh: "天空" },
+      { en: "hot", zh: "熱的", emoji: "🥵" }, { en: "cold", zh: "冷的", emoji: "🥶" },
+      { en: "tree", zh: "樹", emoji: "🌳" }, { en: "flower", zh: "花", emoji: "🌸" },
+    ]},
+    sport: { label: "運動與休閒", words: [
+      { en: "ball", zh: "球", emoji: "⚽" }, { en: "baseball", zh: "棒球", emoji: "⚾" },
+      { en: "basketball", zh: "籃球", emoji: "🏀" }, { en: "soccer", zh: "足球", emoji: "⚽" },
+      { en: "swim", zh: "游泳", emoji: "🏊" }, { en: "run", zh: "跑步", emoji: "🏃" },
+      { en: "jump", zh: "跳", emoji: "🤸" }, { en: "dance", zh: "跳舞", emoji: "💃" },
+      { en: "sing", zh: "唱歌", emoji: "🎤" }, { en: "game", zh: "遊戲", emoji: "🎮" },
+      { en: "toy", zh: "玩具", emoji: "🧸" }, { en: "bike", zh: "腳踏車", emoji: "🚲" },
+    ]},
+    emotion: { label: "情緒與感覺", words: [
+      { en: "happy", zh: "開心", emoji: "😄" }, { en: "sad", zh: "難過", emoji: "😢" },
+      { en: "angry", zh: "生氣", emoji: "😠" }, { en: "tired", zh: "累", emoji: "😴" },
+      { en: "hungry", zh: "餓", emoji: "🤤" }, { en: "thirsty", zh: "渴" },
+      { en: "excited", zh: "興奮", emoji: "🤩" }, { en: "scared", zh: "害怕", emoji: "😨" },
+      { en: "surprised", zh: "驚訝", emoji: "😲" }, { en: "bored", zh: "無聊", emoji: "🥱" },
+      { en: "shy", zh: "害羞", emoji: "😳" }, { en: "proud", zh: "驕傲" },
+    ]},
+    transport: { label: "交通", words: [
+      { en: "car", zh: "汽車", emoji: "🚗" }, { en: "bus", zh: "公車", emoji: "🚌" },
+      { en: "taxi", zh: "計程車", emoji: "🚕" }, { en: "train", zh: "火車", emoji: "🚆" },
+      { en: "bike", zh: "腳踏車", emoji: "🚲" }, { en: "boat", zh: "船", emoji: "⛵" },
+      { en: "plane", zh: "飛機", emoji: "✈️" }, { en: "truck", zh: "卡車", emoji: "🚚" },
+      { en: "MRT", zh: "捷運", emoji: "🚇" }, { en: "motorcycle", zh: "摩托車", emoji: "🏍️" },
+      { en: "ship", zh: "大船", emoji: "🚢" },
+    ]},
+    family: { label: "家庭與人", words: [
+      { en: "father", zh: "爸爸", emoji: "👨" }, { en: "mother", zh: "媽媽", emoji: "👩" },
+      { en: "brother", zh: "兄弟", emoji: "👦" }, { en: "sister", zh: "姊妹", emoji: "👧" },
+      { en: "baby", zh: "嬰兒", emoji: "👶" }, { en: "friend", zh: "朋友", emoji: "🧑‍🤝‍🧑" },
+      { en: "grandfather", zh: "爺爺", emoji: "👴" }, { en: "grandmother", zh: "奶奶", emoji: "👵" },
+      { en: "uncle", zh: "叔叔" }, { en: "aunt", zh: "阿姨" },
+      { en: "boy", zh: "男孩", emoji: "👦" }, { en: "girl", zh: "女孩", emoji: "👧" },
+    ]},
+  };
+
+  const LEVELS = {
+    easy: { rounds: 8, timeMs: 6000, holes: 3, label: "普通" },
+    medium: { rounds: 10, timeMs: 4200, holes: 4, label: "高級" },
+    hard: { rounds: 12, timeMs: 2500, holes: 6, label: "困難" },
+  };
+
+  const HOLE_COUNT = 6;
+
+  const topicSelect = document.getElementById("mg-topic");
+  const levelBtnsWrap = document.getElementById("mg-levels");
+  const scoreEl = document.getElementById("mg-score");
+  const roundEl = document.getElementById("mg-round");
+  const totalRoundsEl = document.getElementById("mg-total-rounds");
+  const streakEl = document.getElementById("mg-streak");
+  const promptEl = document.getElementById("mg-prompt");
+  const replayBtn = document.getElementById("mg-replay");
+  const timebarEl = document.getElementById("mg-timebar");
+  const fieldEl = document.getElementById("mg-field");
+  const restartBtn = document.getElementById("mg-restart");
+  const winOverlay = document.getElementById("mg-win");
+  const starsEl = document.getElementById("mg-stars");
+  const winDetail = document.getElementById("mg-win-detail");
+  const playAgainBtn = document.getElementById("mg-play-again");
+  const startOverlay = document.getElementById("mg-start");
+  const startBtn = document.getElementById("mg-start-btn");
+
+  let currentTopic = "fruit";
+  let currentLevel = "easy";
+  let score = 0, round = 0, streak = 0, bestStreak = 0;
+  let roundActive = false;
+  let currentTarget = null;
+  let holeAssignments = [];
+  let timerStart = 0;
+  let timerDuration = 0;
+  let rafId = null;
+  let timeoutId = null;
+  let wordPool = [];
+
+  Object.keys(TOPICS).forEach((key) => {
+    const opt = document.createElement("option");
+    opt.value = key;
+    opt.textContent = TOPICS[key].label;
+    topicSelect.appendChild(opt);
+  });
+  topicSelect.value = currentTopic;
+
+  function setActiveLevelBtn() {
+    Array.from(levelBtnsWrap.children).forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.level === currentLevel);
+    });
+  }
+  setActiveLevelBtn();
+
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function speak(word) {
+    try {
+      const u = new SpeechSynthesisUtterance(word);
+      u.lang = "en-US";
+      u.rate = 0.82;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(u);
+    } catch (e) {}
+  }
+
+  function buildField() {
+    fieldEl.innerHTML = "";
+    for (let i = 0; i < HOLE_COUNT; i++) {
+      const hole = document.createElement("div");
+      hole.className = "mg-hole";
+      hole.dataset.index = i;
+      hole.innerHTML = `
+        <div class="mg-hole-dirt"></div>
+        <div class="mg-mole">
+          <div class="mg-mole-belly"></div>
+          <div class="mg-mole-content"></div>
+        </div>`;
+      hole.addEventListener("click", () => onHoleClick(i, hole));
+      fieldEl.appendChild(hole);
+    }
+  }
+
+  function resetStats() {
+    score = 0; round = 0; streak = 0; bestStreak = 0;
+    scoreEl.textContent = "0";
+    roundEl.textContent = "0";
+    streakEl.textContent = "0";
+    totalRoundsEl.textContent = String(LEVELS[currentLevel].rounds);
+  }
+
+  function newGame() {
+    resetStats();
+    wordPool = shuffle(TOPICS[currentTopic].words);
+    buildField();
+    winOverlay.classList.remove("show");
+    startOverlay.classList.remove("hide");
+  }
+
+  function nextWordFromPool() {
+    if (wordPool.length === 0) wordPool = shuffle(TOPICS[currentTopic].words);
+    return wordPool.pop();
+  }
+
+  function startRound() {
+    if (round >= LEVELS[currentLevel].rounds) {
+      endGame();
+      return;
+    }
+    round += 1;
+    roundEl.textContent = String(round);
+
+    const level = LEVELS[currentLevel];
+    const holesToFill = Math.min(level.holes, HOLE_COUNT, TOPICS[currentTopic].words.length);
+
+    currentTarget = nextWordFromPool();
+    const others = shuffle(TOPICS[currentTopic].words.filter(w => w.en !== currentTarget.en)).slice(0, holesToFill - 1);
+    const roundWords = shuffle([currentTarget, ...others]);
+
+    const holePositions = shuffle([...Array(HOLE_COUNT).keys()]).slice(0, roundWords.length);
+    holeAssignments = new Array(HOLE_COUNT).fill(null);
+    holePositions.forEach((pos, idx) => { holeAssignments[pos] = roundWords[idx]; });
+
+    Array.from(fieldEl.children).forEach((hole, idx) => {
+      hole.classList.remove("hit", "miss", "correct-reveal", "up");
+      const content = hole.querySelector(".mg-mole-content");
+      const word = holeAssignments[idx];
+      if (word) {
+        if (word.emoji) {
+          content.innerHTML = `<div class="mg-mole-emoji">${word.emoji}</div><div class="mg-mole-zh">${word.zh}</div>`;
+        } else {
+          content.innerHTML = `<div class="mg-mole-zh" style="font-size:12px;">${word.zh}</div>`;
+        }
+        hole.dataset.isCorrect = word.en === currentTarget.en ? "1" : "0";
+        setTimeout(() => hole.classList.add("up"), 20 + idx * 10);
+      } else {
+        content.innerHTML = "";
+        hole.dataset.isCorrect = "0";
+      }
+    });
+
+    promptEl.textContent = currentTarget.en;
+    speak(currentTarget.en);
+
+    roundActive = true;
+    timerDuration = level.timeMs;
+    timebarEl.style.transition = "none";
+    timebarEl.style.width = "100%";
+    requestAnimationFrame(() => {
+      timebarEl.style.transition = `width ${timerDuration}ms linear`;
+      timebarEl.style.width = "0%";
+    });
+
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => onRoundTimeout(), timerDuration);
+  }
+
+  function onHoleClick(idx, hole) {
+    if (!roundActive) return;
+    const word = holeAssignments[idx];
+    if (!word) return;
+
+    if (word.en === currentTarget.en) {
+      roundActive = false;
+      clearTimeout(timeoutId);
+      hole.classList.add("hit");
+      score += 10 + Math.min(streak, 5) * 2;
+      streak += 1;
+      bestStreak = Math.max(bestStreak, streak);
+      scoreEl.textContent = String(score);
+      streakEl.textContent = String(streak);
+      setTimeout(() => startRound(), 700);
+    } else {
+      hole.classList.add("miss");
+      streak = 0;
+      streakEl.textContent = "0";
+      score = Math.max(0, score - 3);
+      scoreEl.textContent = String(score);
+    }
+  }
+
+  function onRoundTimeout() {
+    roundActive = false;
+    streak = 0;
+    streakEl.textContent = "0";
+    Array.from(fieldEl.children).forEach((hole) => {
+      if (hole.dataset.isCorrect === "1") hole.classList.add("correct-reveal");
+    });
+    setTimeout(() => startRound(), 900);
+  }
+
+  function endGame() {
+    const total = LEVELS[currentLevel].rounds;
+    const pct = total > 0 ? score / (total * 10) : 0;
+    let stars = "⭐";
+    if (pct >= 0.6) stars = "⭐⭐";
+    if (pct >= 1.0) stars = "⭐⭐⭐";
+    starsEl.textContent = stars;
+    winDetail.textContent = `${TOPICS[currentTopic].label}・${LEVELS[currentLevel].label} — 總分 ${score}，最高連擊 ${bestStreak}！`;
+    winOverlay.classList.add("show");
+  }
+
+  startBtn.addEventListener("click", () => {
+    startOverlay.classList.add("hide");
+    startRound();
+  });
+  playAgainBtn.addEventListener("click", () => newGame());
+  restartBtn.addEventListener("click", () => newGame());
+  replayBtn.addEventListener("click", () => { if (currentTarget) speak(currentTarget.en); });
+
+  topicSelect.addEventListener("change", () => { currentTopic = topicSelect.value; newGame(); });
+  levelBtnsWrap.addEventListener("click", (e) => {
+    const btn = e.target.closest(".mg-level-btn");
+    if (!btn) return;
+    currentLevel = btn.dataset.level;
+    setActiveLevelBtn();
+    newGame();
+  });
+
+  newGame();
+})();
+</script>
+
+</body>
+</html>

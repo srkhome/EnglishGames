@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>搶答單字</title>
+</head>
+<body>
+<style>
+  #buzz-game-root {
+    --stage: #fff4d6;
+    --stage-dark: #f3c969;
+    --card: #fffaf0;
+    --ink: #3a2b1e;
+    --line: #d9b569;
+    --leaf: #4a7c4e;
+    --orange: #f2884b;
+    --red: #e0523f;
+    --gold: #f0b429;
+    font-family: 'Baloo 2', 'Fredoka', 'Comic Sans MS', sans-serif;
+    background: linear-gradient(180deg, #3a2e1e 0%, #3a2e1e 60px, var(--stage) 60px, var(--stage-dark) 100%);
+    border-radius: 20px;
+    padding: 18px 16px 24px;
+    color: var(--ink);
+    max-width: 640px;
+    margin: 0 auto;
+    box-sizing: border-box;
+    position: relative;
+    overflow: hidden;
+  }
+  #buzz-game-root * { box-sizing: border-box; }
+
+  .bz-header { text-align: center; margin-bottom: 8px; }
+  .bz-title { font-size: 25px; font-weight: 800; color: #fff8e8; margin: 0; }
+  .bz-subtitle { font-size: 13px; color: #fbe9c0; opacity: 0.9; margin-top: 2px; }
+
+  .bz-controls { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center; margin: 12px 0 10px; }
+  .bz-control-group { display: flex; align-items: center; gap: 6px; background: var(--card); border: 2px solid var(--line); border-radius: 999px; padding: 5px 10px 5px 12px; }
+  .bz-control-label { font-size: 12px; font-weight: 700; color: #6b4a1e; }
+  .bz-select { border: none; background: transparent; font-family: inherit; font-size: 13px; font-weight: 700; color: #6b4a1e; padding: 4px 6px; cursor: pointer; }
+  .bz-level-btns { display: flex; gap: 4px; }
+  .bz-level-btn { border: none; border-radius: 999px; padding: 5px 12px; font-size: 12px; font-weight: 700; cursor: pointer; background: transparent; color: #6b4a1e; }
+  .bz-level-btn.active { background: var(--leaf); color: white; }
+  .bz-level-btn[data-level="hard"].active { background: var(--red); }
+  .bz-level-btn[data-level="medium"].active { background: var(--orange); }
+
+  .bz-stats { display: flex; justify-content: center; gap: 10px; margin: 6px 0 14px; flex-wrap: wrap; }
+  .bz-pill { background: var(--card); border: 2px solid var(--line); border-radius: 999px; padding: 6px 14px; font-size: 13px; font-weight: 700; color: #6b4a1e; display: flex; align-items: center; gap: 6px; }
+
+  .bz-playfield { position: relative; min-height: 300px; }
+
+  .bz-stage {
+    background: rgba(255,255,255,0.4);
+    border: 2px solid var(--line);
+    border-radius: 16px;
+    padding: 20px 16px;
+    text-align: center;
+    min-height: 260px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+  }
+
+  .bz-status { font-size: 14px; font-weight: 700; color: #6b4a1e; min-height: 18px; }
+
+  .bz-buzzer {
+    width: 130px;
+    height: 130px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #ff7a63, var(--red) 70%);
+    border: 6px solid #a53324;
+    box-shadow: 0 8px 0 #8a2a1c, 0 10px 14px rgba(0,0,0,0.3);
+    color: white;
+    font-size: 20px;
+    font-weight: 800;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.08s;
+    user-select: none;
+  }
+  .bz-buzzer:active { transform: translateY(6px); box-shadow: 0 2px 0 #8a2a1c, 0 4px 6px rgba(0,0,0,0.3); }
+  .bz-buzzer.disabled { opacity: 0.4; cursor: default; pointer-events: none; }
+  .bz-buzzer.pulsing { animation: bz-pulse 0.9s infinite; }
+  @keyframes bz-pulse { 0%,100% { box-shadow: 0 8px 0 #8a2a1c, 0 10px 14px rgba(0,0,0,0.3), 0 0 0 0 rgba(224,82,63,0.5); } 50% { box-shadow: 0 8px 0 #8a2a1c, 0 10px 14px rgba(0,0,0,0.3), 0 0 0 16px rgba(224,82,63,0); } }
+
+  .bz-choices { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .bz-choice { background: var(--card); border: 3px solid var(--line); border-radius: 12px; padding: 10px 16px; font-size: 16px; font-weight: 800; color: var(--ink); cursor: pointer; }
+  .bz-choice.correct-flash { background: #eafaea; border-color: var(--leaf); }
+  .bz-choice.wrong-flash { background: #fdeceb; border-color: var(--red); }
+  .bz-choice.correct-reveal { box-shadow: 0 0 0 3px var(--gold); }
+
+  .bz-reaction { font-size: 15px; font-weight: 800; color: #6b4a1e; }
+
+  .bz-footer { display: flex; justify-content: center; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+  .bz-btn { background: var(--leaf); color: white; border: none; border-radius: 999px; padding: 10px 22px; font-size: 14px; font-weight: 700; cursor: pointer; box-shadow: 0 3px 0 #375c3a; }
+  .bz-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #375c3a; }
+  .bz-btn.secondary { background: var(--card); color: #6b4a1e; box-shadow: 0 3px 0 var(--line); border: 2px solid var(--line); }
+
+  .bz-win-overlay, .bz-start-overlay { position: absolute; inset: 0; background: rgba(255, 250, 240, 0.97); display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; border-radius: 16px; padding: 20px; z-index: 5; }
+  .bz-win-overlay.show { display: flex; }
+  .bz-start-overlay:not(.hide) { display: flex; }
+  .bz-win-emoji { font-size: 46px; margin-bottom: 8px; }
+  .bz-win-title { font-size: 24px; font-weight: 800; color: #3a2b1e; margin: 0 0 4px; }
+  .bz-win-sub { font-size: 14px; color: #5a6b4f; margin-bottom: 16px; }
+  .bz-stars { font-size: 26px; margin-bottom: 12px; letter-spacing: 4px; }
+</style>
+
+<div id="buzz-game-root">
+  <div class="bz-header">
+    <p class="bz-title">搶答單字 🔔</p>
+    <p class="bz-subtitle">聽到單字，越快按鈴、越快選對分數越高！</p>
+  </div>
+
+  <div class="bz-controls">
+    <div class="bz-control-group">
+      <span class="bz-control-label">主題</span>
+      <select class="bz-select" id="bz-topic"></select>
+    </div>
+    <div class="bz-control-group">
+      <span class="bz-control-label">難度</span>
+      <div class="bz-level-btns" id="bz-levels">
+        <button class="bz-level-btn" data-level="easy">普通</button>
+        <button class="bz-level-btn" data-level="medium">高級</button>
+        <button class="bz-level-btn" data-level="hard">困難</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="bz-stats">
+    <div class="bz-pill">⭐ <span id="bz-score">0</span></div>
+    <div class="bz-pill">🎯 <span id="bz-round">0</span>/<span id="bz-total-rounds">0</span></div>
+    <div class="bz-pill">🔥 <span id="bz-streak">0</span></div>
+  </div>
+
+  <div class="bz-playfield" id="bz-playfield">
+    <div class="bz-stage" id="bz-stage">
+      <div class="bz-status" id="bz-status">準備聽單字...</div>
+      <div class="bz-buzzer" id="bz-buzzer">🔔<br>搶答</div>
+      <div class="bz-reaction" id="bz-reaction"></div>
+      <div class="bz-choices" id="bz-choices"></div>
+    </div>
+
+    <div class="bz-win-overlay" id="bz-win">
+      <div class="bz-win-emoji">🏆</div>
+      <p class="bz-win-title">遊戲結束！</p>
+      <div class="bz-stars" id="bz-stars"></div>
+      <p class="bz-win-sub" id="bz-win-detail"></p>
+      <button class="bz-btn" id="bz-play-again">再玩一次</button>
+    </div>
+
+    <div class="bz-start-overlay" id="bz-start">
+      <div class="bz-win-emoji">🔔</div>
+      <p class="bz-win-title">準備好了嗎？</p>
+      <p class="bz-win-sub">選好上面的主題和難度，再點下面開始</p>
+      <button class="bz-btn" id="bz-start-btn">開始遊戲</button>
+    </div>
+  </div>
+
+  <div class="bz-footer">
+    <button class="bz-btn secondary" id="bz-restart">重新開始</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  const TOPICS = {
+    fruit: { label: "水果", words: [
+      { en: "apple", zh: "蘋果", emoji: "🍎" }, { en: "banana", zh: "香蕉", emoji: "🍌" },
+      { en: "grape", zh: "葡萄", emoji: "🍇" }, { en: "watermelon", zh: "西瓜", emoji: "🍉" },
+      { en: "strawberry", zh: "草莓", emoji: "🍓" }, { en: "orange", zh: "柳橙", emoji: "🍊" },
+      { en: "lemon", zh: "檸檬", emoji: "🍋" }, { en: "peach", zh: "水蜜桃", emoji: "🍑" },
+      { en: "pineapple", zh: "鳳梨", emoji: "🍍" }, { en: "mango", zh: "芒果", emoji: "🥭" },
+      { en: "pear", zh: "梨子", emoji: "🍐" }, { en: "cherry", zh: "櫻桃", emoji: "🍒" },
+    ]},
+    animal: { label: "動物", words: [
+      { en: "dog", zh: "狗", emoji: "🐶" }, { en: "cat", zh: "貓", emoji: "🐱" },
+      { en: "bird", zh: "鳥", emoji: "🐦" }, { en: "fish", zh: "魚", emoji: "🐟" },
+      { en: "pig", zh: "豬", emoji: "🐷" }, { en: "cow", zh: "牛", emoji: "🐮" },
+      { en: "horse", zh: "馬", emoji: "🐴" }, { en: "duck", zh: "鴨子", emoji: "🦆" },
+      { en: "rabbit", zh: "兔子", emoji: "🐰" }, { en: "tiger", zh: "老虎", emoji: "🐯" },
+      { en: "lion", zh: "獅子", emoji: "🦁" }, { en: "elephant", zh: "大象", emoji: "🐘" },
+      { en: "monkey", zh: "猴子", emoji: "🐵" }, { en: "panda", zh: "熊貓", emoji: "🐼" },
+      { en: "frog", zh: "青蛙", emoji: "🐸" },
+    ]},
+    color: { label: "顏色與形狀", words: [
+      { en: "red", zh: "紅色", emoji: "🔴" }, { en: "blue", zh: "藍色", emoji: "🔵" },
+      { en: "yellow", zh: "黃色", emoji: "🟡" }, { en: "green", zh: "綠色", emoji: "🟢" },
+      { en: "black", zh: "黑色", emoji: "⚫" }, { en: "white", zh: "白色", emoji: "⚪" },
+      { en: "brown", zh: "棕色", emoji: "🟤" }, { en: "pink", zh: "粉紅色", emoji: "🩷" },
+      { en: "purple", zh: "紫色", emoji: "🟣" }, { en: "orange", zh: "橘色", emoji: "🟠" },
+      { en: "circle", zh: "圓形", emoji: "⭕" }, { en: "square", zh: "正方形", emoji: "🟥" },
+    ]},
+    body: { label: "身體", words: [
+      { en: "head", zh: "頭" }, { en: "hair", zh: "頭髮" }, { en: "face", zh: "臉" },
+      { en: "eye", zh: "眼睛" }, { en: "ear", zh: "耳朵" }, { en: "nose", zh: "鼻子" },
+      { en: "mouth", zh: "嘴巴" }, { en: "neck", zh: "脖子" }, { en: "arm", zh: "手臂" },
+      { en: "hand", zh: "手" }, { en: "finger", zh: "手指" }, { en: "leg", zh: "腿" },
+      { en: "foot", zh: "腳" }, { en: "knee", zh: "膝蓋" },
+    ]},
+    school: { label: "學校與文具", words: [
+      { en: "school", zh: "學校", emoji: "🏫" }, { en: "student", zh: "學生", emoji: "🧑‍🎓" },
+      { en: "teacher", zh: "老師", emoji: "🧑‍🏫" }, { en: "book", zh: "書", emoji: "📖" },
+      { en: "pencil", zh: "鉛筆", emoji: "✏️" }, { en: "eraser", zh: "橡皮擦" },
+      { en: "ruler", zh: "尺" }, { en: "bag", zh: "書包", emoji: "🎒" },
+      { en: "desk", zh: "書桌" }, { en: "chair", zh: "椅子", emoji: "🪑" },
+      { en: "classroom", zh: "教室" }, { en: "notebook", zh: "筆記本", emoji: "📓" },
+      { en: "scissors", zh: "剪刀", emoji: "✂️" }, { en: "glue", zh: "膠水" },
+    ]},
+    food: { label: "食物與飲料", words: [
+      { en: "rice", zh: "飯", emoji: "🍚" }, { en: "bread", zh: "麵包", emoji: "🍞" },
+      { en: "egg", zh: "蛋", emoji: "🥚" }, { en: "milk", zh: "牛奶", emoji: "🥛" },
+      { en: "juice", zh: "果汁", emoji: "🧃" }, { en: "water", zh: "水", emoji: "💧" },
+      { en: "cake", zh: "蛋糕", emoji: "🍰" }, { en: "soup", zh: "湯", emoji: "🥣" },
+      { en: "noodle", zh: "麵", emoji: "🍜" }, { en: "chicken", zh: "雞肉", emoji: "🍗" },
+      { en: "vegetable", zh: "蔬菜", emoji: "🥦" }, { en: "candy", zh: "糖果", emoji: "🍬" },
+    ]},
+    home: { label: "家具與居家", words: [
+      { en: "house", zh: "房子", emoji: "🏠" }, { en: "room", zh: "房間" },
+      { en: "bed", zh: "床", emoji: "🛏️" }, { en: "table", zh: "桌子" },
+      { en: "chair", zh: "椅子", emoji: "🪑" }, { en: "door", zh: "門", emoji: "🚪" },
+      { en: "window", zh: "窗戶" }, { en: "kitchen", zh: "廚房" },
+      { en: "bathroom", zh: "浴室" }, { en: "TV", zh: "電視", emoji: "📺" },
+      { en: "phone", zh: "電話", emoji: "📱" }, { en: "lamp", zh: "檯燈", emoji: "💡" },
+    ]},
+    weather: { label: "天氣與自然", words: [
+      { en: "sun", zh: "太陽", emoji: "☀️" }, { en: "moon", zh: "月亮", emoji: "🌙" },
+      { en: "star", zh: "星星", emoji: "⭐" }, { en: "rain", zh: "雨", emoji: "🌧️" },
+      { en: "snow", zh: "雪", emoji: "❄️" }, { en: "wind", zh: "風", emoji: "💨" },
+      { en: "cloud", zh: "雲", emoji: "☁️" }, { en: "sky", zh: "天空" },
+      { en: "hot", zh: "熱的", emoji: "🥵" }, { en: "cold", zh: "冷的", emoji: "🥶" },
+      { en: "tree", zh: "樹", emoji: "🌳" }, { en: "flower", zh: "花", emoji: "🌸" },
+    ]},
+    sport: { label: "運動與休閒", words: [
+      { en: "ball", zh: "球", emoji: "⚽" }, { en: "baseball", zh: "棒球", emoji: "⚾" },
+      { en: "basketball", zh: "籃球", emoji: "🏀" }, { en: "soccer", zh: "足球", emoji: "⚽" },
+      { en: "swim", zh: "游泳", emoji: "🏊" }, { en: "run", zh: "跑步", emoji: "🏃" },
+      { en: "jump", zh: "跳", emoji: "🤸" }, { en: "dance", zh: "跳舞", emoji: "💃" },
+      { en: "sing", zh: "唱歌", emoji: "🎤" }, { en: "game", zh: "遊戲", emoji: "🎮" },
+      { en: "toy", zh: "玩具", emoji: "🧸" }, { en: "bike", zh: "腳踏車", emoji: "🚲" },
+    ]},
+    emotion: { label: "情緒與感覺", words: [
+      { en: "happy", zh: "開心", emoji: "😄" }, { en: "sad", zh: "難過", emoji: "😢" },
+      { en: "angry", zh: "生氣", emoji: "😠" }, { en: "tired", zh: "累", emoji: "😴" },
+      { en: "hungry", zh: "餓", emoji: "🤤" }, { en: "thirsty", zh: "渴" },
+      { en: "excited", zh: "興奮", emoji: "🤩" }, { en: "scared", zh: "害怕", emoji: "😨" },
+      { en: "surprised", zh: "驚訝", emoji: "😲" }, { en: "bored", zh: "無聊", emoji: "🥱" },
+      { en: "shy", zh: "害羞", emoji: "😳" }, { en: "proud", zh: "驕傲" },
+    ]},
+    transport: { label: "交通", words: [
+      { en: "car", zh: "汽車", emoji: "🚗" }, { en: "bus", zh: "公車", emoji: "🚌" },
+      { en: "taxi", zh: "計程車", emoji: "🚕" }, { en: "train", zh: "火車", emoji: "🚆" },
+      { en: "bike", zh: "腳踏車", emoji: "🚲" }, { en: "boat", zh: "船", emoji: "⛵" },
+      { en: "plane", zh: "飛機", emoji: "✈️" }, { en: "truck", zh: "卡車", emoji: "🚚" },
+      { en: "MRT", zh: "捷運", emoji: "🚇" }, { en: "motorcycle", zh: "摩托車", emoji: "🏍️" },
+      { en: "ship", zh: "大船", emoji: "🚢" },
+    ]},
+    family: { label: "家庭與人", words: [
+      { en: "father", zh: "爸爸", emoji: "👨" }, { en: "mother", zh: "媽媽", emoji: "👩" },
+      { en: "brother", zh: "兄弟", emoji: "👦" }, { en: "sister", zh: "姊妹", emoji: "👧" },
+      { en: "baby", zh: "嬰兒", emoji: "👶" }, { en: "friend", zh: "朋友", emoji: "🧑‍🤝‍🧑" },
+      { en: "grandfather", zh: "爺爺", emoji: "👴" }, { en: "grandmother", zh: "奶奶", emoji: "👵" },
+      { en: "uncle", zh: "叔叔" }, { en: "aunt", zh: "阿姨" },
+      { en: "boy", zh: "男孩", emoji: "👦" }, { en: "girl", zh: "女孩", emoji: "👧" },
+    ]},
+  };
+
+  const LEVELS = {
+    easy: { choices: 3, buzzWindowMs: 8000, answerWindowMs: 5000, rounds: 8, label: "普通" },
+    medium: { choices: 4, buzzWindowMs: 6000, answerWindowMs: 4000, rounds: 10, label: "高級" },
+    hard: { choices: 6, buzzWindowMs: 4500, answerWindowMs: 3000, rounds: 12, label: "困難" },
+  };
+
+  const topicSelect = document.getElementById("bz-topic");
+  const levelBtnsWrap = document.getElementById("bz-levels");
+  const scoreEl = document.getElementById("bz-score");
+  const roundEl = document.getElementById("bz-round");
+  const totalRoundsEl = document.getElementById("bz-total-rounds");
+  const streakEl = document.getElementById("bz-streak");
+  const statusEl = document.getElementById("bz-status");
+  const buzzerEl = document.getElementById("bz-buzzer");
+  const reactionEl = document.getElementById("bz-reaction");
+  const choicesEl = document.getElementById("bz-choices");
+  const restartBtn = document.getElementById("bz-restart");
+  const winOverlay = document.getElementById("bz-win");
+  const starsEl = document.getElementById("bz-stars");
+  const winDetail = document.getElementById("bz-win-detail");
+  const playAgainBtn = document.getElementById("bz-play-again");
+  const startOverlay = document.getElementById("bz-start");
+  const startBtn = document.getElementById("bz-start-btn");
+
+  let currentTopic = "fruit";
+  let currentLevel = "easy";
+  let score = 0, round = 0, streak = 0, bestStreak = 0;
+  let totalReactionMs = 0, reactionSamples = 0;
+  let currentTarget = null;
+  let wordPool = [];
+  let phase = "idle"; // idle -> listening -> buzzed -> answered
+  let speakStartTime = 0;
+  let buzzTimeoutId = null;
+  let answerTimeoutId = null;
+
+  Object.keys(TOPICS).forEach((key) => {
+    const opt = document.createElement("option");
+    opt.value = key;
+    opt.textContent = TOPICS[key].label;
+    topicSelect.appendChild(opt);
+  });
+  topicSelect.value = currentTopic;
+
+  function setActiveLevelBtn() {
+    Array.from(levelBtnsWrap.children).forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.level === currentLevel);
+    });
+  }
+  setActiveLevelBtn();
+
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function speak(word) {
+    try {
+      const u = new SpeechSynthesisUtterance(word);
+      u.lang = "en-US";
+      u.rate = 0.82;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(u);
+    } catch (e) {}
+  }
+
+  function resetStats() {
+    score = 0; round = 0; streak = 0; bestStreak = 0;
+    totalReactionMs = 0; reactionSamples = 0;
+    scoreEl.textContent = "0";
+    roundEl.textContent = "0";
+    streakEl.textContent = "0";
+    totalRoundsEl.textContent = String(LEVELS[currentLevel].rounds);
+  }
+
+  function newGame() {
+    resetStats();
+    wordPool = shuffle(TOPICS[currentTopic].words);
+    statusEl.textContent = "準備聽單字...";
+    buzzerEl.classList.remove("disabled", "pulsing");
+    reactionEl.textContent = "";
+    choicesEl.innerHTML = "";
+    winOverlay.classList.remove("show");
+    startOverlay.classList.remove("hide");
+  }
+
+  function nextWordFromPool() {
+    if (wordPool.length === 0) wordPool = shuffle(TOPICS[currentTopic].words);
+    return wordPool.pop();
+  }
+
+  function startRound() {
+    if (round >= LEVELS[currentLevel].rounds) { endGame(); return; }
+    round += 1;
+    roundEl.textContent = String(round);
+
+    const level = LEVELS[currentLevel];
+    currentTarget = nextWordFromPool();
+
+    reactionEl.textContent = "";
+    choicesEl.innerHTML = "";
+    buzzerEl.classList.remove("disabled");
+    buzzerEl.classList.add("pulsing");
+    statusEl.textContent = "聽仔細，聽到就按鈴！";
+    phase = "listening";
+
+    speakStartTime = performance.now();
+    speak(currentTarget.en);
+
+    clearTimeout(buzzTimeoutId);
+    buzzTimeoutId = setTimeout(() => {
+      if (phase === "listening") onMissBuzz();
+    }, level.buzzWindowMs);
+  }
+
+  function onBuzzerClick() {
+    if (phase !== "listening") return;
+    clearTimeout(buzzTimeoutId);
+    const reactionMs = Math.round(performance.now() - speakStartTime);
+    totalReactionMs += reactionMs;
+    reactionSamples += 1;
+    reactionEl.textContent = `反應時間：${(reactionMs / 1000).toFixed(2)} 秒`;
+    buzzerEl.classList.remove("pulsing");
+    buzzerEl.classList.add("disabled");
+    phase = "buzzed";
+    statusEl.textContent = "快選出正確的意思！";
+    showChoices();
+  }
+
+  function showChoices() {
+    const level = LEVELS[currentLevel];
+    const n = Math.min(level.choices, TOPICS[currentTopic].words.length);
+    const others = shuffle(TOPICS[currentTopic].words.filter(w => w.en !== currentTarget.en)).slice(0, n - 1);
+    const choiceWords = shuffle([currentTarget, ...others]);
+
+    choicesEl.innerHTML = "";
+    choiceWords.forEach((word) => {
+      const btn = document.createElement("div");
+      btn.className = "bz-choice";
+      btn.dataset.en = word.en;
+      btn.textContent = word.emoji ? `${word.emoji} ${word.zh}` : word.zh;
+      btn.addEventListener("click", () => onChoiceClick(word, btn));
+      choicesEl.appendChild(btn);
+    });
+
+    phase = "choosing";
+    clearTimeout(answerTimeoutId);
+    answerTimeoutId = setTimeout(() => { if (phase === "choosing") onMissChoice(); }, level.answerWindowMs);
+  }
+
+  function onChoiceClick(word, btn) {
+    if (phase !== "choosing") return;
+    if (word.en === currentTarget.en) {
+      clearTimeout(answerTimeoutId);
+      phase = "answered";
+      btn.classList.add("correct-flash");
+      streak += 1;
+      bestStreak = Math.max(bestStreak, streak);
+      score += 10 + Math.min(streak, 5) * 2;
+      scoreEl.textContent = String(score);
+      streakEl.textContent = String(streak);
+      statusEl.textContent = "答對了！";
+      setTimeout(() => startRound(), 800);
+    } else {
+      btn.classList.add("wrong-flash");
+      streak = 0;
+      streakEl.textContent = "0";
+      score = Math.max(0, score - 3);
+      scoreEl.textContent = String(score);
+    }
+  }
+
+  function onMissBuzz() {
+    phase = "answered";
+    buzzerEl.classList.remove("pulsing");
+    buzzerEl.classList.add("disabled");
+    statusEl.textContent = `太慢了，正確答案是 ${currentTarget.en}`;
+    streak = 0;
+    streakEl.textContent = "0";
+    setTimeout(() => startRound(), 1100);
+  }
+
+  function onMissChoice() {
+    phase = "answered";
+    statusEl.textContent = `時間到！正確答案是 ${currentTarget.en}`;
+    Array.from(choicesEl.children).forEach((btn) => {
+      if (btn.dataset.en === currentTarget.en) btn.classList.add("correct-reveal");
+    });
+    streak = 0;
+    streakEl.textContent = "0";
+    setTimeout(() => startRound(), 1100);
+  }
+
+  function endGame() {
+    const total = LEVELS[currentLevel].rounds;
+    const pct = total > 0 ? score / (total * 12) : 0;
+    let stars = "⭐";
+    if (pct >= 0.6) stars = "⭐⭐";
+    if (pct >= 1.0) stars = "⭐⭐⭐";
+    starsEl.textContent = stars;
+    const avgReaction = reactionSamples > 0 ? (totalReactionMs / reactionSamples / 1000).toFixed(2) : "—";
+    winDetail.textContent = `${TOPICS[currentTopic].label}・${LEVELS[currentLevel].label} — 總分 ${score}，平均反應 ${avgReaction} 秒，最高連對 ${bestStreak}！`;
+    winOverlay.classList.add("show");
+  }
+
+  buzzerEl.addEventListener("click", onBuzzerClick);
+  startBtn.addEventListener("click", () => { startOverlay.classList.add("hide"); startRound(); });
+  playAgainBtn.addEventListener("click", () => newGame());
+  restartBtn.addEventListener("click", () => newGame());
+
+  topicSelect.addEventListener("change", () => { currentTopic = topicSelect.value; newGame(); });
+  levelBtnsWrap.addEventListener("click", (e) => {
+    const btn = e.target.closest(".bz-level-btn");
+    if (!btn) return;
+    currentLevel = btn.dataset.level;
+    setActiveLevelBtn();
+    newGame();
+  });
+
+  newGame();
+})();
+</script>
+</body>
+</html>

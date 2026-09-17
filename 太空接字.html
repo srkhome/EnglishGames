@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>太空接字</title>
+</head>
+<body>
+<style>
+  #space-game-root {
+    --space-top: #0f1030;
+    --space-bottom: #2a2a5c;
+    --card: #fffaf0;
+    --ink: #2f3a4a;
+    --line: #4a4a7a;
+    --leaf: #4a7c4e;
+    --orange: #f2884b;
+    --red: #e0523f;
+    --gold: #f0c94a;
+    --star: #ffe9a8;
+    font-family: 'Baloo 2', 'Fredoka', 'Comic Sans MS', sans-serif;
+    background: linear-gradient(180deg, var(--space-top) 0%, var(--space-bottom) 100%);
+    border-radius: 20px;
+    padding: 18px 16px 24px;
+    color: #fff;
+    max-width: 640px;
+    margin: 0 auto;
+    box-sizing: border-box;
+    position: relative;
+    overflow: hidden;
+  }
+  #space-game-root * { box-sizing: border-box; }
+
+  .sp-star { position: absolute; width: 3px; height: 3px; background: var(--star); border-radius: 50%; opacity: 0.7; }
+
+  .sp-header { text-align: center; margin-bottom: 8px; position: relative; z-index: 1; }
+  .sp-title { font-size: 25px; font-weight: 800; color: #fff8e8; margin: 0; }
+  .sp-subtitle { font-size: 13px; color: #cfd3f0; opacity: 0.9; margin-top: 2px; }
+
+  .sp-controls { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center; margin: 12px 0 10px; position: relative; z-index: 1; }
+  .sp-control-group { display: flex; align-items: center; gap: 6px; background: var(--card); border: 2px solid var(--line); border-radius: 999px; padding: 5px 10px 5px 12px; }
+  .sp-control-label { font-size: 12px; font-weight: 700; color: #3a3a6a; }
+  .sp-select { border: none; background: transparent; font-family: inherit; font-size: 13px; font-weight: 700; color: #3a3a6a; padding: 4px 6px; cursor: pointer; }
+  .sp-level-btns { display: flex; gap: 4px; }
+  .sp-level-btn { border: none; border-radius: 999px; padding: 5px 12px; font-size: 12px; font-weight: 700; cursor: pointer; background: transparent; color: #3a3a6a; }
+  .sp-level-btn.active { background: var(--leaf); color: white; }
+  .sp-level-btn[data-level="hard"].active { background: var(--red); }
+  .sp-level-btn[data-level="medium"].active { background: var(--orange); }
+
+  .sp-stats { display: flex; justify-content: center; gap: 10px; margin: 6px 0 12px; position: relative; z-index: 1; }
+  .sp-pill { background: var(--card); border: 2px solid var(--line); border-radius: 999px; padding: 6px 14px; font-size: 13px; font-weight: 700; color: #3a3a6a; display: flex; align-items: center; gap: 6px; }
+
+  .sp-playfield { position: relative; z-index: 1; }
+
+  .sp-sky {
+    position: relative;
+    height: 230px;
+    border-radius: 14px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+    border: 2px solid rgba(255,255,255,0.15);
+    overflow: hidden;
+  }
+
+  .sp-falling {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    transform: translate(-50%, 0);
+    background: var(--card);
+    color: var(--ink);
+    border-radius: 12px;
+    padding: 8px 16px;
+    font-size: 18px;
+    font-weight: 800;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+    border: 2px solid var(--gold);
+    transition: top linear;
+    white-space: nowrap;
+  }
+
+  .sp-catchers {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+  }
+
+  .sp-catcher {
+    background: var(--card);
+    border: 3px solid var(--line);
+    border-radius: 12px;
+    min-width: 70px;
+    padding: 6px 6px 8px;
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+  .sp-catcher-emoji { font-size: 20px; line-height: 1; }
+  .sp-catcher-zh { font-size: 10px; font-weight: 800; color: #2f3a4a; margin-top: 2px; line-height: 1.1; }
+  .sp-catcher.correct-flash { background: #eafaea; border-color: var(--leaf); transform: scale(1.08); }
+  .sp-catcher.wrong-shake { animation: sp-shake 0.3s; }
+  @keyframes sp-shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+  .sp-catcher.correct-reveal { box-shadow: 0 0 0 3px var(--gold); }
+
+  .sp-footer { display: flex; justify-content: center; gap: 10px; margin-top: 18px; position: relative; z-index: 1; }
+  .sp-btn { background: var(--leaf); color: white; border: none; border-radius: 999px; padding: 10px 22px; font-size: 14px; font-weight: 700; cursor: pointer; box-shadow: 0 3px 0 #375c3a; }
+  .sp-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #375c3a; }
+  .sp-btn.secondary { background: var(--card); color: #3a3a6a; box-shadow: 0 3px 0 var(--line); border: 2px solid var(--line); }
+
+  .sp-win-overlay, .sp-start-overlay { position: absolute; inset: 0; background: rgba(255, 250, 240, 0.97); display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; border-radius: 14px; padding: 20px; z-index: 5; color: #2f3a4a; }
+  .sp-win-overlay.show { display: flex; }
+  .sp-start-overlay:not(.hide) { display: flex; }
+  .sp-win-emoji { font-size: 46px; margin-bottom: 8px; }
+  .sp-win-title { font-size: 24px; font-weight: 800; margin: 0 0 4px; }
+  .sp-win-sub { font-size: 14px; color: #5a6b7a; margin-bottom: 16px; }
+  .sp-stars { font-size: 26px; margin-bottom: 12px; letter-spacing: 4px; }
+</style>
+
+<div id="space-game-root">
+  <div class="sp-header">
+    <p class="sp-title">太空接字 🚀</p>
+    <p class="sp-subtitle">單字掉下來前，點對意思接住它！</p>
+  </div>
+
+  <div class="sp-controls">
+    <div class="sp-control-group">
+      <span class="sp-control-label">主題</span>
+      <select class="sp-select" id="sp-topic"></select>
+    </div>
+    <div class="sp-control-group">
+      <span class="sp-control-label">難度</span>
+      <div class="sp-level-btns" id="sp-levels">
+        <button class="sp-level-btn" data-level="easy">普通</button>
+        <button class="sp-level-btn" data-level="medium">高級</button>
+        <button class="sp-level-btn" data-level="hard">困難</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sp-stats">
+    <div class="sp-pill">⭐ <span id="sp-score">0</span></div>
+    <div class="sp-pill">🎯 <span id="sp-round">0</span>/<span id="sp-total-rounds">0</span></div>
+    <div class="sp-pill">🔥 <span id="sp-streak">0</span></div>
+  </div>
+
+  <div class="sp-playfield" id="sp-playfield">
+    <div class="sp-sky" id="sp-sky"></div>
+    <div class="sp-catchers" id="sp-catchers"></div>
+
+    <div class="sp-win-overlay" id="sp-win">
+      <div class="sp-win-emoji">🏆</div>
+      <p class="sp-win-title">遊戲結束！</p>
+      <div class="sp-stars" id="sp-stars"></div>
+      <p class="sp-win-sub" id="sp-win-detail"></p>
+      <button class="sp-btn" id="sp-play-again">再玩一次</button>
+    </div>
+
+    <div class="sp-start-overlay" id="sp-start">
+      <div class="sp-win-emoji">🚀</div>
+      <p class="sp-win-title">準備好了嗎？</p>
+      <p class="sp-win-sub">選好上面的主題和難度，再點下面開始</p>
+      <button class="sp-btn" id="sp-start-btn">開始遊戲</button>
+    </div>
+  </div>
+
+  <div class="sp-footer">
+    <button class="sp-btn secondary" id="sp-restart">重新開始</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  const TOPICS = {
+    fruit: { label: "水果", words: [
+      { en: "apple", zh: "蘋果", emoji: "🍎" }, { en: "banana", zh: "香蕉", emoji: "🍌" },
+      { en: "grape", zh: "葡萄", emoji: "🍇" }, { en: "watermelon", zh: "西瓜", emoji: "🍉" },
+      { en: "strawberry", zh: "草莓", emoji: "🍓" }, { en: "orange", zh: "柳橙", emoji: "🍊" },
+      { en: "lemon", zh: "檸檬", emoji: "🍋" }, { en: "peach", zh: "水蜜桃", emoji: "🍑" },
+      { en: "pineapple", zh: "鳳梨", emoji: "🍍" }, { en: "mango", zh: "芒果", emoji: "🥭" },
+      { en: "pear", zh: "梨子", emoji: "🍐" }, { en: "cherry", zh: "櫻桃", emoji: "🍒" },
+    ]},
+    animal: { label: "動物", words: [
+      { en: "dog", zh: "狗", emoji: "🐶" }, { en: "cat", zh: "貓", emoji: "🐱" },
+      { en: "bird", zh: "鳥", emoji: "🐦" }, { en: "fish", zh: "魚", emoji: "🐟" },
+      { en: "pig", zh: "豬", emoji: "🐷" }, { en: "cow", zh: "牛", emoji: "🐮" },
+      { en: "horse", zh: "馬", emoji: "🐴" }, { en: "duck", zh: "鴨子", emoji: "🦆" },
+      { en: "rabbit", zh: "兔子", emoji: "🐰" }, { en: "tiger", zh: "老虎", emoji: "🐯" },
+      { en: "lion", zh: "獅子", emoji: "🦁" }, { en: "elephant", zh: "大象", emoji: "🐘" },
+      { en: "monkey", zh: "猴子", emoji: "🐵" }, { en: "panda", zh: "熊貓", emoji: "🐼" },
+      { en: "frog", zh: "青蛙", emoji: "🐸" },
+    ]},
+    color: { label: "顏色與形狀", words: [
+      { en: "red", zh: "紅色", emoji: "🔴" }, { en: "blue", zh: "藍色", emoji: "🔵" },
+      { en: "yellow", zh: "黃色", emoji: "🟡" }, { en: "green", zh: "綠色", emoji: "🟢" },
+      { en: "black", zh: "黑色", emoji: "⚫" }, { en: "white", zh: "白色", emoji: "⚪" },
+      { en: "brown", zh: "棕色", emoji: "🟤" }, { en: "pink", zh: "粉紅色", emoji: "🩷" },
+      { en: "purple", zh: "紫色", emoji: "🟣" }, { en: "orange", zh: "橘色", emoji: "🟠" },
+      { en: "circle", zh: "圓形", emoji: "⭕" }, { en: "square", zh: "正方形", emoji: "🟥" },
+    ]},
+    body: { label: "身體", words: [
+      { en: "head", zh: "頭" }, { en: "hair", zh: "頭髮" }, { en: "face", zh: "臉" },
+      { en: "eye", zh: "眼睛" }, { en: "ear", zh: "耳朵" }, { en: "nose", zh: "鼻子" },
+      { en: "mouth", zh: "嘴巴" }, { en: "neck", zh: "脖子" }, { en: "arm", zh: "手臂" },
+      { en: "hand", zh: "手" }, { en: "finger", zh: "手指" }, { en: "leg", zh: "腿" },
+      { en: "foot", zh: "腳" }, { en: "knee", zh: "膝蓋" },
+    ]},
+    school: { label: "學校與文具", words: [
+      { en: "school", zh: "學校", emoji: "🏫" }, { en: "student", zh: "學生", emoji: "🧑‍🎓" },
+      { en: "teacher", zh: "老師", emoji: "🧑‍🏫" }, { en: "book", zh: "書", emoji: "📖" },
+      { en: "pencil", zh: "鉛筆", emoji: "✏️" }, { en: "eraser", zh: "橡皮擦" },
+      { en: "ruler", zh: "尺" }, { en: "bag", zh: "書包", emoji: "🎒" },
+      { en: "desk", zh: "書桌" }, { en: "chair", zh: "椅子", emoji: "🪑" },
+      { en: "classroom", zh: "教室" }, { en: "notebook", zh: "筆記本", emoji: "📓" },
+      { en: "scissors", zh: "剪刀", emoji: "✂️" }, { en: "glue", zh: "膠水" },
+    ]},
+    food: { label: "食物與飲料", words: [
+      { en: "rice", zh: "飯", emoji: "🍚" }, { en: "bread", zh: "麵包", emoji: "🍞" },
+      { en: "egg", zh: "蛋", emoji: "🥚" }, { en: "milk", zh: "牛奶", emoji: "🥛" },
+      { en: "juice", zh: "果汁", emoji: "🧃" }, { en: "water", zh: "水", emoji: "💧" },
+      { en: "cake", zh: "蛋糕", emoji: "🍰" }, { en: "soup", zh: "湯", emoji: "🥣" },
+      { en: "noodle", zh: "麵", emoji: "🍜" }, { en: "chicken", zh: "雞肉", emoji: "🍗" },
+      { en: "vegetable", zh: "蔬菜", emoji: "🥦" }, { en: "candy", zh: "糖果", emoji: "🍬" },
+    ]},
+    home: { label: "家具與居家", words: [
+      { en: "house", zh: "房子", emoji: "🏠" }, { en: "room", zh: "房間" },
+      { en: "bed", zh: "床", emoji: "🛏️" }, { en: "table", zh: "桌子" },
+      { en: "chair", zh: "椅子", emoji: "🪑" }, { en: "door", zh: "門", emoji: "🚪" },
+      { en: "window", zh: "窗戶" }, { en: "kitchen", zh: "廚房" },
+      { en: "bathroom", zh: "浴室" }, { en: "TV", zh: "電視", emoji: "📺" },
+      { en: "phone", zh: "電話", emoji: "📱" }, { en: "lamp", zh: "檯燈", emoji: "💡" },
+    ]},
+    weather: { label: "天氣與自然", words: [
+      { en: "sun", zh: "太陽", emoji: "☀️" }, { en: "moon", zh: "月亮", emoji: "🌙" },
+      { en: "star", zh: "星星", emoji: "⭐" }, { en: "rain", zh: "雨", emoji: "🌧️" },
+      { en: "snow", zh: "雪", emoji: "❄️" }, { en: "wind", zh: "風", emoji: "💨" },
+      { en: "cloud", zh: "雲", emoji: "☁️" }, { en: "sky", zh: "天空" },
+      { en: "hot", zh: "熱的", emoji: "🥵" }, { en: "cold", zh: "冷的", emoji: "🥶" },
+      { en: "tree", zh: "樹", emoji: "🌳" }, { en: "flower", zh: "花", emoji: "🌸" },
+    ]},
+    sport: { label: "運動與休閒", words: [
+      { en: "ball", zh: "球", emoji: "⚽" }, { en: "baseball", zh: "棒球", emoji: "⚾" },
+      { en: "basketball", zh: "籃球", emoji: "🏀" }, { en: "soccer", zh: "足球", emoji: "⚽" },
+      { en: "swim", zh: "游泳", emoji: "🏊" }, { en: "run", zh: "跑步", emoji: "🏃" },
+      { en: "jump", zh: "跳", emoji: "🤸" }, { en: "dance", zh: "跳舞", emoji: "💃" },
+      { en: "sing", zh: "唱歌", emoji: "🎤" }, { en: "game", zh: "遊戲", emoji: "🎮" },
+      { en: "toy", zh: "玩具", emoji: "🧸" }, { en: "bike", zh: "腳踏車", emoji: "🚲" },
+    ]},
+    emotion: { label: "情緒與感覺", words: [
+      { en: "happy", zh: "開心", emoji: "😄" }, { en: "sad", zh: "難過", emoji: "😢" },
+      { en: "angry", zh: "生氣", emoji: "😠" }, { en: "tired", zh: "累", emoji: "😴" },
+      { en: "hungry", zh: "餓", emoji: "🤤" }, { en: "thirsty", zh: "渴" },
+      { en: "excited", zh: "興奮", emoji: "🤩" }, { en: "scared", zh: "害怕", emoji: "😨" },
+      { en: "surprised", zh: "驚訝", emoji: "😲" }, { en: "bored", zh: "無聊", emoji: "🥱" },
+      { en: "shy", zh: "害羞", emoji: "😳" }, { en: "proud", zh: "驕傲" },
+    ]},
+    transport: { label: "交通", words: [
+      { en: "car", zh: "汽車", emoji: "🚗" }, { en: "bus", zh: "公車", emoji: "🚌" },
+      { en: "taxi", zh: "計程車", emoji: "🚕" }, { en: "train", zh: "火車", emoji: "🚆" },
+      { en: "bike", zh: "腳踏車", emoji: "🚲" }, { en: "boat", zh: "船", emoji: "⛵" },
+      { en: "plane", zh: "飛機", emoji: "✈️" }, { en: "truck", zh: "卡車", emoji: "🚚" },
+      { en: "MRT", zh: "捷運", emoji: "🚇" }, { en: "motorcycle", zh: "摩托車", emoji: "🏍️" },
+      { en: "ship", zh: "大船", emoji: "🚢" },
+    ]},
+    family: { label: "家庭與人", words: [
+      { en: "father", zh: "爸爸", emoji: "👨" }, { en: "mother", zh: "媽媽", emoji: "👩" },
+      { en: "brother", zh: "兄弟", emoji: "👦" }, { en: "sister", zh: "姊妹", emoji: "👧" },
+      { en: "baby", zh: "嬰兒", emoji: "👶" }, { en: "friend", zh: "朋友", emoji: "🧑‍🤝‍🧑" },
+      { en: "grandfather", zh: "爺爺", emoji: "👴" }, { en: "grandmother", zh: "奶奶", emoji: "👵" },
+      { en: "uncle", zh: "叔叔" }, { en: "aunt", zh: "阿姨" },
+      { en: "boy", zh: "男孩", emoji: "👦" }, { en: "girl", zh: "女孩", emoji: "👧" },
+    ]},
+  };
+
+  const LEVELS = {
+    easy: { chips: 3, fallMs: 6000, rounds: 8, label: "普通" },
+    medium: { chips: 4, fallMs: 4200, rounds: 10, label: "高級" },
+    hard: { chips: 6, fallMs: 2600, rounds: 12, label: "困難" },
+  };
+
+  const topicSelect = document.getElementById("sp-topic");
+  const levelBtnsWrap = document.getElementById("sp-levels");
+  const scoreEl = document.getElementById("sp-score");
+  const roundEl = document.getElementById("sp-round");
+  const totalRoundsEl = document.getElementById("sp-total-rounds");
+  const streakEl = document.getElementById("sp-streak");
+  const skyEl = document.getElementById("sp-sky");
+  const catchersEl = document.getElementById("sp-catchers");
+  const restartBtn = document.getElementById("sp-restart");
+  const winOverlay = document.getElementById("sp-win");
+  const starsEl = document.getElementById("sp-stars");
+  const winDetail = document.getElementById("sp-win-detail");
+  const playAgainBtn = document.getElementById("sp-play-again");
+  const startOverlay = document.getElementById("sp-start");
+  const startBtn = document.getElementById("sp-start-btn");
+
+  let currentTopic = "fruit";
+  let currentLevel = "easy";
+  let score = 0, round = 0, streak = 0, bestStreak = 0;
+  let roundActive = false;
+  let currentTarget = null;
+  let catcherAssignments = [];
+  let wordPool = [];
+  let fallEl = null;
+  let fallTimeoutId = null;
+
+  Object.keys(TOPICS).forEach((key) => {
+    const opt = document.createElement("option");
+    opt.value = key;
+    opt.textContent = TOPICS[key].label;
+    topicSelect.appendChild(opt);
+  });
+  topicSelect.value = currentTopic;
+
+  function setActiveLevelBtn() {
+    Array.from(levelBtnsWrap.children).forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.level === currentLevel);
+    });
+  }
+  setActiveLevelBtn();
+
+  function makeStars() {
+    skyEl.querySelectorAll(".sp-star").forEach(s => s.remove());
+    for (let i = 0; i < 25; i++) {
+      const star = document.createElement("div");
+      star.className = "sp-star";
+      star.style.left = Math.random() * 100 + "%";
+      star.style.top = Math.random() * 100 + "%";
+      star.style.opacity = (0.3 + Math.random() * 0.6).toFixed(2);
+      skyEl.appendChild(star);
+    }
+  }
+
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function speak(word) {
+    try {
+      const u = new SpeechSynthesisUtterance(word);
+      u.lang = "en-US";
+      u.rate = 0.82;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(u);
+    } catch (e) {}
+  }
+
+  function resetStats() {
+    score = 0; round = 0; streak = 0; bestStreak = 0;
+    scoreEl.textContent = "0";
+    roundEl.textContent = "0";
+    streakEl.textContent = "0";
+    totalRoundsEl.textContent = String(LEVELS[currentLevel].rounds);
+  }
+
+  function newGame() {
+    resetStats();
+    wordPool = shuffle(TOPICS[currentTopic].words);
+    makeStars();
+    if (fallEl) { fallEl.remove(); fallEl = null; }
+    catchersEl.innerHTML = "";
+    winOverlay.classList.remove("show");
+    startOverlay.classList.remove("hide");
+  }
+
+  function nextWordFromPool() {
+    if (wordPool.length === 0) wordPool = shuffle(TOPICS[currentTopic].words);
+    return wordPool.pop();
+  }
+
+  function startRound() {
+    if (round >= LEVELS[currentLevel].rounds) { endGame(); return; }
+    round += 1;
+    roundEl.textContent = String(round);
+
+    const level = LEVELS[currentLevel];
+    const chipsToShow = Math.min(level.chips, TOPICS[currentTopic].words.length);
+
+    currentTarget = nextWordFromPool();
+    const others = shuffle(TOPICS[currentTopic].words.filter(w => w.en !== currentTarget.en)).slice(0, chipsToShow - 1);
+    const chipWords = shuffle([currentTarget, ...others]);
+    catcherAssignments = chipWords;
+
+    catchersEl.innerHTML = "";
+    chipWords.forEach((word) => {
+      const chip = document.createElement("div");
+      chip.className = "sp-catcher";
+      if (word.emoji) {
+        chip.innerHTML = `<div class="sp-catcher-emoji">${word.emoji}</div><div class="sp-catcher-zh">${word.zh}</div>`;
+      } else {
+        chip.innerHTML = `<div class="sp-catcher-zh" style="font-size:12px;">${word.zh}</div>`;
+      }
+      chip.dataset.en = word.en;
+      chip.addEventListener("click", () => onCatcherClick(word, chip));
+      catchersEl.appendChild(chip);
+    });
+
+    if (fallEl) fallEl.remove();
+    fallEl = document.createElement("div");
+    fallEl.className = "sp-falling";
+    fallEl.textContent = currentTarget.en;
+    fallEl.style.transition = "none";
+    fallEl.style.top = "0%";
+    skyEl.appendChild(fallEl);
+
+    speak(currentTarget.en);
+
+    roundActive = true;
+    const fallMs = level.fallMs;
+    requestAnimationFrame(() => {
+      fallEl.style.transition = `top ${fallMs}ms linear`;
+      fallEl.style.top = "88%";
+    });
+
+    clearTimeout(fallTimeoutId);
+    fallTimeoutId = setTimeout(() => onRoundMiss(), fallMs);
+  }
+
+  function onCatcherClick(word, chip) {
+    if (!roundActive) return;
+    if (word.en === currentTarget.en) {
+      roundActive = false;
+      clearTimeout(fallTimeoutId);
+      chip.classList.add("correct-flash");
+      score += 10 + Math.min(streak, 5) * 2;
+      streak += 1;
+      bestStreak = Math.max(bestStreak, streak);
+      scoreEl.textContent = String(score);
+      streakEl.textContent = String(streak);
+      if (fallEl) {
+        fallEl.style.transition = "none";
+        fallEl.style.opacity = "0";
+      }
+      setTimeout(() => startRound(), 700);
+    } else {
+      chip.classList.add("wrong-shake");
+      setTimeout(() => chip.classList.remove("wrong-shake"), 300);
+      streak = 0;
+      streakEl.textContent = "0";
+      score = Math.max(0, score - 3);
+      scoreEl.textContent = String(score);
+    }
+  }
+
+  function onRoundMiss() {
+    roundActive = false;
+    streak = 0;
+    streakEl.textContent = "0";
+    Array.from(catchersEl.children).forEach((chip) => {
+      if (chip.dataset.en === currentTarget.en) chip.classList.add("correct-reveal");
+    });
+    setTimeout(() => startRound(), 900);
+  }
+
+  function endGame() {
+    const total = LEVELS[currentLevel].rounds;
+    const pct = total > 0 ? score / (total * 10) : 0;
+    let stars = "⭐";
+    if (pct >= 0.6) stars = "⭐⭐";
+    if (pct >= 1.0) stars = "⭐⭐⭐";
+    starsEl.textContent = stars;
+    winDetail.textContent = `${TOPICS[currentTopic].label}・${LEVELS[currentLevel].label} — 總分 ${score}，最高連擊 ${bestStreak}！`;
+    winOverlay.classList.add("show");
+  }
+
+  startBtn.addEventListener("click", () => { startOverlay.classList.add("hide"); startRound(); });
+  playAgainBtn.addEventListener("click", () => newGame());
+  restartBtn.addEventListener("click", () => newGame());
+
+  topicSelect.addEventListener("change", () => { currentTopic = topicSelect.value; newGame(); });
+  levelBtnsWrap.addEventListener("click", (e) => {
+    const btn = e.target.closest(".sp-level-btn");
+    if (!btn) return;
+    currentLevel = btn.dataset.level;
+    setActiveLevelBtn();
+    newGame();
+  });
+
+  newGame();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>單字保齡球</title>
+</head>
+<body>
+<style>
+  #bowl-game-root {
+    --lane: #c99a5b;
+    --lane-dark: #a97a3f;
+    --gutter: #6b4a2b;
+    --pin-white: #fffaf0;
+    --pin-red: #d94f3d;
+    --paper: #fffaf0;
+    --ink: #33281c;
+    --leaf: #4a7c4e;
+    --orange: #f2884b;
+    --red: #e0523f;
+    font-family: 'Baloo 2', 'Fredoka', 'Comic Sans MS', sans-serif;
+    background: linear-gradient(180deg, #2b2438 0%, #2b2438 60px, var(--lane) 60px, var(--lane-dark) 100%);
+    border-radius: 20px;
+    padding: 18px 16px 24px;
+    color: var(--ink);
+    max-width: 640px;
+    margin: 0 auto;
+    box-sizing: border-box;
+    position: relative;
+    overflow: hidden;
+  }
+  #bowl-game-root * { box-sizing: border-box; }
+
+  .bg-header { text-align: center; margin-bottom: 8px; }
+  .bg-title { font-size: 25px; font-weight: 800; color: #fff8e8; margin: 0; }
+  .bg-subtitle { font-size: 13px; color: #f3e6c8; opacity: 0.9; margin-top: 2px; }
+
+  .bg-controls { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center; margin: 12px 0 10px; }
+  .bg-control-group { display: flex; align-items: center; gap: 6px; background: var(--paper); border: 2px solid var(--gutter); border-radius: 999px; padding: 5px 10px 5px 12px; }
+  .bg-control-label { font-size: 12px; font-weight: 700; color: var(--gutter); }
+  .bg-select { border: none; background: transparent; font-family: inherit; font-size: 13px; font-weight: 700; color: var(--gutter); padding: 4px 6px; cursor: pointer; }
+  .bg-level-btns { display: flex; gap: 4px; }
+  .bg-level-btn { border: none; border-radius: 999px; padding: 5px 12px; font-size: 12px; font-weight: 700; cursor: pointer; background: transparent; color: var(--gutter); }
+  .bg-level-btn.active { background: var(--leaf); color: white; }
+  .bg-level-btn[data-level="hard"].active { background: var(--red); }
+  .bg-level-btn[data-level="medium"].active { background: var(--orange); }
+
+  .bg-stats { display: flex; justify-content: center; gap: 10px; margin: 6px 0 14px; }
+  .bg-pill { background: var(--paper); border: 2px solid var(--gutter); border-radius: 999px; padding: 6px 14px; font-size: 13px; font-weight: 700; color: var(--gutter); display: flex; align-items: center; gap: 6px; }
+
+  .bg-prompt-row { display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .bg-prompt { background: var(--paper); border: 3px solid var(--gutter); border-radius: 16px; padding: 10px 22px; font-size: 20px; font-weight: 800; color: var(--gutter); min-width: 140px; text-align: center; }
+  .bg-replay-btn { background: var(--paper); border: 2px solid var(--gutter); border-radius: 999px; width: 40px; height: 40px; font-size: 18px; cursor: pointer; }
+
+  .bg-timebar-wrap { background: rgba(255,255,255,0.4); border-radius: 999px; height: 10px; margin: 0 auto 18px; max-width: 360px; overflow: hidden; border: 1px solid rgba(0,0,0,0.15); }
+  .bg-timebar { height: 100%; background: linear-gradient(90deg, #7fd858, #f0b429); width: 100%; transition: width linear; }
+
+  .bg-playfield { position: relative; }
+
+  .bg-lane {
+    position: relative;
+    height: 260px;
+    margin: 0 auto;
+    max-width: 420px;
+    background: repeating-linear-gradient(90deg, rgba(255,255,255,0.06) 0 2px, transparent 2px 40px);
+    border-left: 8px solid var(--gutter);
+    border-right: 8px solid var(--gutter);
+    border-radius: 6px;
+    overflow: visible;
+  }
+
+  .bg-pin {
+    position: absolute;
+    width: 62px;
+    height: 78px;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+    transition: transform 0.4s ease, opacity 0.4s ease;
+  }
+
+  .bg-pin-body {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(180deg, var(--pin-white) 0%, #f0e6d0 100%);
+    border-radius: 45% 45% 40% 40% / 55% 55% 35% 35%;
+    box-shadow: inset -4px 0 6px rgba(0,0,0,0.08), 0 3px 4px rgba(0,0,0,0.25);
+    border: 2px solid #d8c9a8;
+  }
+
+  .bg-pin-stripe {
+    position: absolute;
+    left: 8%;
+    right: 8%;
+    top: 24%;
+    height: 14%;
+    background: var(--pin-red);
+    border-radius: 3px;
+  }
+  .bg-pin-stripe.lower { top: 42%; }
+
+  .bg-pin-label {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 2px 3px;
+    z-index: 2;
+  }
+  .bg-pin-emoji { font-size: 18px; line-height: 1; }
+  .bg-pin-zh { font-size: 9px; font-weight: 800; color: #3a2b1e; line-height: 1.1; margin-top: 1px; }
+
+  .bg-pin.knocked { transform: translate(-50%, -50%) rotate(85deg) translateY(20px); opacity: 0.35; }
+  .bg-pin.miss-shake { animation: bg-shake 0.3s; }
+  @keyframes bg-shake { 0%,100% { transform: translate(-50%, -50%); } 25% { transform: translate(-56%, -50%); } 75% { transform: translate(-44%, -50%); } }
+
+  .bg-pin.correct-reveal .bg-pin-body { box-shadow: 0 0 0 4px #ffd54a, 0 3px 4px rgba(0,0,0,0.25); }
+
+  .bg-ball {
+    position: absolute;
+    left: 50%;
+    bottom: -30px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #6b6b6b, #1c1c1c 70%);
+    transform: translate(-50%, 0);
+    opacity: 0;
+    z-index: 10;
+    pointer-events: none;
+    transition: none;
+  }
+
+  .bg-footer { display: flex; justify-content: center; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+  .bg-btn { background: var(--leaf); color: white; border: none; border-radius: 999px; padding: 10px 22px; font-size: 14px; font-weight: 700; cursor: pointer; box-shadow: 0 3px 0 #375c3a; }
+  .bg-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #375c3a; }
+  .bg-btn.secondary { background: var(--paper); color: var(--gutter); box-shadow: 0 3px 0 var(--gutter); border: 2px solid var(--gutter); }
+
+  .bg-win-overlay, .bg-start-overlay { position: absolute; inset: 0; background: rgba(255, 250, 240, 0.97); display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; border-radius: 20px; padding: 20px; z-index: 5; }
+  .bg-win-overlay.show { display: flex; }
+  .bg-start-overlay:not(.hide) { display: flex; }
+  .bg-win-emoji { font-size: 48px; margin-bottom: 8px; }
+  .bg-win-title { font-size: 24px; font-weight: 800; color: var(--gutter); margin: 0 0 4px; }
+  .bg-win-sub { font-size: 14px; color: #5a6b4f; margin-bottom: 16px; }
+  .bg-stars { font-size: 26px; margin-bottom: 12px; letter-spacing: 4px; }
+</style>
+
+<div id="bowl-game-root">
+  <div class="bg-header">
+    <p class="bg-title">單字保齡球 🎳</p>
+    <p class="bg-subtitle">聽到英文單字，擊倒對的意思！</p>
+  </div>
+
+  <div class="bg-controls">
+    <div class="bg-control-group">
+      <span class="bg-control-label">主題</span>
+      <select class="bg-select" id="bg-topic"></select>
+    </div>
+    <div class="bg-control-group">
+      <span class="bg-control-label">難度</span>
+      <div class="bg-level-btns" id="bg-levels">
+        <button class="bg-level-btn" data-level="easy">普通</button>
+        <button class="bg-level-btn" data-level="medium">高級</button>
+        <button class="bg-level-btn" data-level="hard">困難</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="bg-stats">
+    <div class="bg-pill">⭐ <span id="bg-score">0</span></div>
+    <div class="bg-pill">🎯 <span id="bg-round">0</span>/<span id="bg-total-rounds">0</span></div>
+    <div class="bg-pill">🔥 <span id="bg-streak">0</span></div>
+  </div>
+
+  <div class="bg-prompt-row">
+    <div class="bg-prompt" id="bg-prompt">?</div>
+    <button class="bg-replay-btn" id="bg-replay" title="再聽一次">🔊</button>
+  </div>
+
+  <div class="bg-timebar-wrap"><div class="bg-timebar" id="bg-timebar"></div></div>
+
+  <div class="bg-playfield" id="bg-playfield">
+    <div class="bg-lane" id="bg-lane">
+      <div class="bg-ball" id="bg-ball"></div>
+    </div>
+
+    <div class="bg-win-overlay" id="bg-win">
+      <div class="bg-win-emoji">🏆</div>
+      <p class="bg-win-title">遊戲結束！</p>
+      <div class="bg-stars" id="bg-stars"></div>
+      <p class="bg-win-sub" id="bg-win-detail"></p>
+      <button class="bg-btn" id="bg-play-again">再玩一次</button>
+    </div>
+
+    <div class="bg-start-overlay" id="bg-start">
+      <div class="bg-win-emoji">🎳</div>
+      <p class="bg-win-title">準備好了嗎？</p>
+      <p class="bg-win-sub">選好上面的主題和難度，再點下面開始</p>
+      <button class="bg-btn" id="bg-start-btn">開始遊戲</button>
+    </div>
+  </div>
+
+  <div class="bg-footer">
+    <button class="bg-btn secondary" id="bg-restart">重新開始</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  const TOPICS = {
+    fruit: { label: "水果", words: [
+      { en: "apple", zh: "蘋果", emoji: "🍎" }, { en: "banana", zh: "香蕉", emoji: "🍌" },
+      { en: "grape", zh: "葡萄", emoji: "🍇" }, { en: "watermelon", zh: "西瓜", emoji: "🍉" },
+      { en: "strawberry", zh: "草莓", emoji: "🍓" }, { en: "orange", zh: "柳橙", emoji: "🍊" },
+      { en: "lemon", zh: "檸檬", emoji: "🍋" }, { en: "peach", zh: "水蜜桃", emoji: "🍑" },
+      { en: "pineapple", zh: "鳳梨", emoji: "🍍" }, { en: "mango", zh: "芒果", emoji: "🥭" },
+      { en: "pear", zh: "梨子", emoji: "🍐" }, { en: "cherry", zh: "櫻桃", emoji: "🍒" },
+    ]},
+    animal: { label: "動物", words: [
+      { en: "dog", zh: "狗", emoji: "🐶" }, { en: "cat", zh: "貓", emoji: "🐱" },
+      { en: "bird", zh: "鳥", emoji: "🐦" }, { en: "fish", zh: "魚", emoji: "🐟" },
+      { en: "pig", zh: "豬", emoji: "🐷" }, { en: "cow", zh: "牛", emoji: "🐮" },
+      { en: "horse", zh: "馬", emoji: "🐴" }, { en: "duck", zh: "鴨子", emoji: "🦆" },
+      { en: "rabbit", zh: "兔子", emoji: "🐰" }, { en: "tiger", zh: "老虎", emoji: "🐯" },
+      { en: "lion", zh: "獅子", emoji: "🦁" }, { en: "elephant", zh: "大象", emoji: "🐘" },
+      { en: "monkey", zh: "猴子", emoji: "🐵" }, { en: "panda", zh: "熊貓", emoji: "🐼" },
+      { en: "frog", zh: "青蛙", emoji: "🐸" },
+    ]},
+    color: { label: "顏色與形狀", words: [
+      { en: "red", zh: "紅色", emoji: "🔴" }, { en: "blue", zh: "藍色", emoji: "🔵" },
+      { en: "yellow", zh: "黃色", emoji: "🟡" }, { en: "green", zh: "綠色", emoji: "🟢" },
+      { en: "black", zh: "黑色", emoji: "⚫" }, { en: "white", zh: "白色", emoji: "⚪" },
+      { en: "brown", zh: "棕色", emoji: "🟤" }, { en: "pink", zh: "粉紅色", emoji: "🩷" },
+      { en: "purple", zh: "紫色", emoji: "🟣" }, { en: "orange", zh: "橘色", emoji: "🟠" },
+      { en: "circle", zh: "圓形", emoji: "⭕" }, { en: "square", zh: "正方形", emoji: "🟥" },
+    ]},
+    body: { label: "身體", words: [
+      { en: "head", zh: "頭" }, { en: "hair", zh: "頭髮" }, { en: "face", zh: "臉" },
+      { en: "eye", zh: "眼睛" }, { en: "ear", zh: "耳朵" }, { en: "nose", zh: "鼻子" },
+      { en: "mouth", zh: "嘴巴" }, { en: "neck", zh: "脖子" }, { en: "arm", zh: "手臂" },
+      { en: "hand", zh: "手" }, { en: "finger", zh: "手指" }, { en: "leg", zh: "腿" },
+      { en: "foot", zh: "腳" }, { en: "knee", zh: "膝蓋" },
+    ]},
+    school: { label: "學校與文具", words: [
+      { en: "school", zh: "學校", emoji: "🏫" }, { en: "student", zh: "學生", emoji: "🧑‍🎓" },
+      { en: "teacher", zh: "老師", emoji: "🧑‍🏫" }, { en: "book", zh: "書", emoji: "📖" },
+      { en: "pencil", zh: "鉛筆", emoji: "✏️" }, { en: "eraser", zh: "橡皮擦" },
+      { en: "ruler", zh: "尺" }, { en: "bag", zh: "書包", emoji: "🎒" },
+      { en: "desk", zh: "書桌" }, { en: "chair", zh: "椅子", emoji: "🪑" },
+      { en: "classroom", zh: "教室" }, { en: "notebook", zh: "筆記本", emoji: "📓" },
+      { en: "scissors", zh: "剪刀", emoji: "✂️" }, { en: "glue", zh: "膠水" },
+    ]},
+    food: { label: "食物與飲料", words: [
+      { en: "rice", zh: "飯", emoji: "🍚" }, { en: "bread", zh: "麵包", emoji: "🍞" },
+      { en: "egg", zh: "蛋", emoji: "🥚" }, { en: "milk", zh: "牛奶", emoji: "🥛" },
+      { en: "juice", zh: "果汁", emoji: "🧃" }, { en: "water", zh: "水", emoji: "💧" },
+      { en: "cake", zh: "蛋糕", emoji: "🍰" }, { en: "soup", zh: "湯", emoji: "🥣" },
+      { en: "noodle", zh: "麵", emoji: "🍜" }, { en: "chicken", zh: "雞肉", emoji: "🍗" },
+      { en: "vegetable", zh: "蔬菜", emoji: "🥦" }, { en: "candy", zh: "糖果", emoji: "🍬" },
+    ]},
+    home: { label: "家具與居家", words: [
+      { en: "house", zh: "房子", emoji: "🏠" }, { en: "room", zh: "房間" },
+      { en: "bed", zh: "床", emoji: "🛏️" }, { en: "table", zh: "桌子" },
+      { en: "chair", zh: "椅子", emoji: "🪑" }, { en: "door", zh: "門", emoji: "🚪" },
+      { en: "window", zh: "窗戶" }, { en: "kitchen", zh: "廚房" },
+      { en: "bathroom", zh: "浴室" }, { en: "TV", zh: "電視", emoji: "📺" },
+      { en: "phone", zh: "電話", emoji: "📱" }, { en: "lamp", zh: "檯燈", emoji: "💡" },
+    ]},
+    weather: { label: "天氣與自然", words: [
+      { en: "sun", zh: "太陽", emoji: "☀️" }, { en: "moon", zh: "月亮", emoji: "🌙" },
+      { en: "star", zh: "星星", emoji: "⭐" }, { en: "rain", zh: "雨", emoji: "🌧️" },
+      { en: "snow", zh: "雪", emoji: "❄️" }, { en: "wind", zh: "風", emoji: "💨" },
+      { en: "cloud", zh: "雲", emoji: "☁️" }, { en: "sky", zh: "天空" },
+      { en: "hot", zh: "熱的", emoji: "🥵" }, { en: "cold", zh: "冷的", emoji: "🥶" },
+      { en: "tree", zh: "樹", emoji: "🌳" }, { en: "flower", zh: "花", emoji: "🌸" },
+    ]},
+    sport: { label: "運動與休閒", words: [
+      { en: "ball", zh: "球", emoji: "⚽" }, { en: "baseball", zh: "棒球", emoji: "⚾" },
+      { en: "basketball", zh: "籃球", emoji: "🏀" }, { en: "soccer", zh: "足球", emoji: "⚽" },
+      { en: "swim", zh: "游泳", emoji: "🏊" }, { en: "run", zh: "跑步", emoji: "🏃" },
+      { en: "jump", zh: "跳", emoji: "🤸" }, { en: "dance", zh: "跳舞", emoji: "💃" },
+      { en: "sing", zh: "唱歌", emoji: "🎤" }, { en: "game", zh: "遊戲", emoji: "🎮" },
+      { en: "toy", zh: "玩具", emoji: "🧸" }, { en: "bike", zh: "腳踏車", emoji: "🚲" },
+    ]},
+    emotion: { label: "情緒與感覺", words: [
+      { en: "happy", zh: "開心", emoji: "😄" }, { en: "sad", zh: "難過", emoji: "😢" },
+      { en: "angry", zh: "生氣", emoji: "😠" }, { en: "tired", zh: "累", emoji: "😴" },
+      { en: "hungry", zh: "餓", emoji: "🤤" }, { en: "thirsty", zh: "渴" },
+      { en: "excited", zh: "興奮", emoji: "🤩" }, { en: "scared", zh: "害怕", emoji: "😨" },
+      { en: "surprised", zh: "驚訝", emoji: "😲" }, { en: "bored", zh: "無聊", emoji: "🥱" },
+      { en: "shy", zh: "害羞", emoji: "😳" }, { en: "proud", zh: "驕傲" },
+    ]},
+    transport: { label: "交通", words: [
+      { en: "car", zh: "汽車", emoji: "🚗" }, { en: "bus", zh: "公車", emoji: "🚌" },
+      { en: "taxi", zh: "計程車", emoji: "🚕" }, { en: "train", zh: "火車", emoji: "🚆" },
+      { en: "bike", zh: "腳踏車", emoji: "🚲" }, { en: "boat", zh: "船", emoji: "⛵" },
+      { en: "plane", zh: "飛機", emoji: "✈️" }, { en: "truck", zh: "卡車", emoji: "🚚" },
+      { en: "MRT", zh: "捷運", emoji: "🚇" }, { en: "motorcycle", zh: "摩托車", emoji: "🏍️" },
+      { en: "ship", zh: "大船", emoji: "🚢" },
+    ]},
+    family: { label: "家庭與人", words: [
+      { en: "father", zh: "爸爸", emoji: "👨" }, { en: "mother", zh: "媽媽", emoji: "👩" },
+      { en: "brother", zh: "兄弟", emoji: "👦" }, { en: "sister", zh: "姊妹", emoji: "👧" },
+      { en: "baby", zh: "嬰兒", emoji: "👶" }, { en: "friend", zh: "朋友", emoji: "🧑‍🤝‍🧑" },
+      { en: "grandfather", zh: "爺爺", emoji: "👴" }, { en: "grandmother", zh: "奶奶", emoji: "👵" },
+      { en: "uncle", zh: "叔叔" }, { en: "aunt", zh: "阿姨" },
+      { en: "boy", zh: "男孩", emoji: "👦" }, { en: "girl", zh: "女孩", emoji: "👧" },
+    ]},
+  };
+
+  const LEVELS = {
+    easy: { rounds: 8, timeMs: 6000, pins: 3, label: "普通" },
+    medium: { rounds: 10, timeMs: 4200, pins: 4, label: "高級" },
+    hard: { rounds: 12, timeMs: 2500, pins: 6, label: "困難" },
+  };
+
+  // 6 個瓶子的三角形位置 (% of lane width/height), 後排到前排
+  const PIN_SLOTS = [
+    { x: 25, y: 18 }, { x: 50, y: 18 }, { x: 75, y: 18 },
+    { x: 37.5, y: 50 }, { x: 62.5, y: 50 },
+    { x: 50, y: 82 },
+  ];
+
+  const topicSelect = document.getElementById("bg-topic");
+  const levelBtnsWrap = document.getElementById("bg-levels");
+  const scoreEl = document.getElementById("bg-score");
+  const roundEl = document.getElementById("bg-round");
+  const totalRoundsEl = document.getElementById("bg-total-rounds");
+  const streakEl = document.getElementById("bg-streak");
+  const promptEl = document.getElementById("bg-prompt");
+  const replayBtn = document.getElementById("bg-replay");
+  const timebarEl = document.getElementById("bg-timebar");
+  const laneEl = document.getElementById("bg-lane");
+  const ballEl = document.getElementById("bg-ball");
+  const restartBtn = document.getElementById("bg-restart");
+  const winOverlay = document.getElementById("bg-win");
+  const starsEl = document.getElementById("bg-stars");
+  const winDetail = document.getElementById("bg-win-detail");
+  const playAgainBtn = document.getElementById("bg-play-again");
+  const startOverlay = document.getElementById("bg-start");
+  const startBtn = document.getElementById("bg-start-btn");
+
+  let currentTopic = "fruit";
+  let currentLevel = "easy";
+  let score = 0, round = 0, streak = 0, bestStreak = 0;
+  let roundActive = false;
+  let currentTarget = null;
+  let pinAssignments = [];
+  let timerDuration = 0;
+  let timeoutId = null;
+  let wordPool = [];
+  let pinEls = [];
+
+  Object.keys(TOPICS).forEach((key) => {
+    const opt = document.createElement("option");
+    opt.value = key;
+    opt.textContent = TOPICS[key].label;
+    topicSelect.appendChild(opt);
+  });
+  topicSelect.value = currentTopic;
+
+  function setActiveLevelBtn() {
+    Array.from(levelBtnsWrap.children).forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.level === currentLevel);
+    });
+  }
+  setActiveLevelBtn();
+
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function speak(word) {
+    try {
+      const u = new SpeechSynthesisUtterance(word);
+      u.lang = "en-US";
+      u.rate = 0.82;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(u);
+    } catch (e) {}
+  }
+
+  function buildLane() {
+    Array.from(laneEl.querySelectorAll(".bg-pin")).forEach(p => p.remove());
+    pinEls = PIN_SLOTS.map((slot, idx) => {
+      const pin = document.createElement("div");
+      pin.className = "bg-pin";
+      pin.style.left = slot.x + "%";
+      pin.style.top = slot.y + "%";
+      pin.innerHTML = `
+        <div class="bg-pin-body">
+          <div class="bg-pin-stripe"></div>
+          <div class="bg-pin-stripe lower"></div>
+        </div>
+        <div class="bg-pin-label"></div>`;
+      pin.addEventListener("click", () => onPinClick(idx));
+      laneEl.appendChild(pin);
+      return pin;
+    });
+  }
+
+  function resetStats() {
+    score = 0; round = 0; streak = 0; bestStreak = 0;
+    scoreEl.textContent = "0";
+    roundEl.textContent = "0";
+    streakEl.textContent = "0";
+    totalRoundsEl.textContent = String(LEVELS[currentLevel].rounds);
+  }
+
+  function newGame() {
+    resetStats();
+    wordPool = shuffle(TOPICS[currentTopic].words);
+    buildLane();
+    winOverlay.classList.remove("show");
+    startOverlay.classList.remove("hide");
+  }
+
+  function nextWordFromPool() {
+    if (wordPool.length === 0) wordPool = shuffle(TOPICS[currentTopic].words);
+    return wordPool.pop();
+  }
+
+  function startRound() {
+    if (round >= LEVELS[currentLevel].rounds) { endGame(); return; }
+    round += 1;
+    roundEl.textContent = String(round);
+
+    const level = LEVELS[currentLevel];
+    const pinsToFill = Math.min(level.pins, PIN_SLOTS.length, TOPICS[currentTopic].words.length);
+
+    currentTarget = nextWordFromPool();
+    const others = shuffle(TOPICS[currentTopic].words.filter(w => w.en !== currentTarget.en)).slice(0, pinsToFill - 1);
+    const roundWords = shuffle([currentTarget, ...others]);
+
+    const slotIndexes = shuffle([...Array(PIN_SLOTS.length).keys()]).slice(0, roundWords.length);
+    pinAssignments = new Array(PIN_SLOTS.length).fill(null);
+    slotIndexes.forEach((slotIdx, i) => { pinAssignments[slotIdx] = roundWords[i]; });
+
+    pinEls.forEach((pin, idx) => {
+      pin.classList.remove("knocked", "miss-shake", "correct-reveal");
+      const label = pin.querySelector(".bg-pin-label");
+      const word = pinAssignments[idx];
+      if (word) {
+        pin.style.visibility = "visible";
+        if (word.emoji) {
+          label.innerHTML = `<div class="bg-pin-emoji">${word.emoji}</div><div class="bg-pin-zh">${word.zh}</div>`;
+        } else {
+          label.innerHTML = `<div class="bg-pin-zh" style="font-size:11px;">${word.zh}</div>`;
+        }
+        pin.dataset.isCorrect = word.en === currentTarget.en ? "1" : "0";
+      } else {
+        pin.style.visibility = "hidden";
+        label.innerHTML = "";
+        pin.dataset.isCorrect = "0";
+      }
+    });
+
+    promptEl.textContent = currentTarget.en;
+    speak(currentTarget.en);
+
+    roundActive = true;
+    timerDuration = level.timeMs;
+    timebarEl.style.transition = "none";
+    timebarEl.style.width = "100%";
+    requestAnimationFrame(() => {
+      timebarEl.style.transition = `width ${timerDuration}ms linear`;
+      timebarEl.style.width = "0%";
+    });
+
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => onRoundTimeout(), timerDuration);
+  }
+
+  function rollBallTo(slotIdx) {
+    const slot = PIN_SLOTS[slotIdx];
+    const targetLeftPct = slot.x;
+    const targetBottomPct = 100 - slot.y;
+
+    ballEl.style.transition = "none";
+    ballEl.style.left = "50%";
+    ballEl.style.bottom = "-30px";
+    ballEl.style.opacity = "1";
+    // 強制重新計算樣式，確保下面的 transition 是從起點開始
+    void ballEl.offsetWidth;
+
+    requestAnimationFrame(() => {
+      ballEl.style.transition = "left 0.4s ease-in, bottom 0.4s ease-in";
+      ballEl.style.left = targetLeftPct + "%";
+      ballEl.style.bottom = targetBottomPct + "%";
+    });
+
+    setTimeout(() => { ballEl.style.opacity = "0"; }, 450);
+  }
+
+  function onPinClick(idx) {
+    if (!roundActive) return;
+    const pin = pinEls[idx];
+    const word = pinAssignments[idx];
+    if (!word || pin.style.visibility === "hidden") return;
+
+    if (word.en === currentTarget.en) {
+      roundActive = false;
+      clearTimeout(timeoutId);
+      rollBallTo(idx);
+      setTimeout(() => pin.classList.add("knocked"), 400);
+      score += 10 + Math.min(streak, 5) * 2;
+      streak += 1;
+      bestStreak = Math.max(bestStreak, streak);
+      scoreEl.textContent = String(score);
+      streakEl.textContent = String(streak);
+      setTimeout(() => startRound(), 900);
+    } else {
+      pin.classList.add("miss-shake");
+      setTimeout(() => pin.classList.remove("miss-shake"), 300);
+      streak = 0;
+      streakEl.textContent = "0";
+      score = Math.max(0, score - 3);
+      scoreEl.textContent = String(score);
+    }
+  }
+
+  function onRoundTimeout() {
+    roundActive = false;
+    streak = 0;
+    streakEl.textContent = "0";
+    pinEls.forEach((pin) => { if (pin.dataset.isCorrect === "1") pin.classList.add("correct-reveal"); });
+    setTimeout(() => startRound(), 900);
+  }
+
+  function endGame() {
+    const total = LEVELS[currentLevel].rounds;
+    const pct = total > 0 ? score / (total * 10) : 0;
+    let stars = "⭐";
+    if (pct >= 0.6) stars = "⭐⭐";
+    if (pct >= 1.0) stars = "⭐⭐⭐";
+    starsEl.textContent = stars;
+    winDetail.textContent = `${TOPICS[currentTopic].label}・${LEVELS[currentLevel].label} — 總分 ${score}，最高連擊 ${bestStreak}！`;
+    winOverlay.classList.add("show");
+  }
+
+  startBtn.addEventListener("click", () => { startOverlay.classList.add("hide"); startRound(); });
+  playAgainBtn.addEventListener("click", () => newGame());
+  restartBtn.addEventListener("click", () => newGame());
+  replayBtn.addEventListener("click", () => { if (currentTarget) speak(currentTarget.en); });
+
+  topicSelect.addEventListener("change", () => { currentTopic = topicSelect.value; newGame(); });
+  levelBtnsWrap.addEventListener("click", (e) => {
+    const btn = e.target.closest(".bg-level-btn");
+    if (!btn) return;
+    currentLevel = btn.dataset.level;
+    setActiveLevelBtn();
+    newGame();
+  });
+
+  newGame();
+})();
+</script>
+</body>
+</html>

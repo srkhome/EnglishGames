@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>英語單字遊樂園</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;800&family=Fredoka:wght@400;600&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Baloo 2"', '"Fredoka"', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#f4a261',
+                        secondary: '#2a9d8f',
+                        bgLight: '#fefae0',
+                        textDark: '#264653',
+                    },
+                    animation: {
+                        'float': 'float 6s ease-in-out infinite',
+                        'float-delayed': 'float 6s ease-in-out 3s infinite',
+                        'bounce-slow': 'bounce 3s infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-20px)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #fefae0;
+            background-image: radial-gradient(#e9edc9 2px, transparent 2px);
+            background-size: 30px 30px;
+            color: #264653;
+        }
+        
+        .card-hover-effect {
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        
+        .card-hover-effect:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        .icon-container {
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .card-hover-effect:hover .icon-container {
+            transform: scale(1.15) rotate(5deg);
+        }
+
+        /* 自訂可愛的捲軸 */
+        ::-webkit-scrollbar {
+            width: 12px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #fefae0; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #e9c46a; 
+            border-radius: 10px;
+            border: 3px solid #fefae0;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #f4a261; 
+        }
+    </style>
+</head>
+<body class="min-h-screen relative overflow-x-hidden pb-20">
+
+    <!-- 背景裝飾圖形 -->
+    <div class="fixed top-10 left-10 w-24 h-24 bg-yellow-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-float pointer-events-none z-0"></div>
+    <div class="fixed top-40 right-20 w-32 h-32 bg-pink-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-float-delayed pointer-events-none z-0"></div>
+    <div class="fixed bottom-20 left-1/4 w-40 h-40 bg-teal-300 rounded-full mix-blend-multiply filter blur-xl opacity-60 animate-float pointer-events-none z-0"></div>
+
+    <!-- 頁首標題區 -->
+    <header class="relative z-10 pt-16 pb-12 px-4 text-center">
+        <div class="inline-block relative">
+            <span class="absolute -top-6 -left-8 text-4xl animate-bounce-slow">✨</span>
+            <span class="absolute -bottom-4 -right-6 text-4xl animate-bounce-slow" style="animation-delay: 1.5s;">🎈</span>
+            <h1 class="text-5xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 drop-shadow-sm mb-4">
+                英語單字遊樂園
+            </h1>
+        </div>
+        <p class="text-lg md:text-xl text-gray-600 font-semibold max-w-2xl mx-auto mt-4 bg-white/60 backdrop-blur-sm px-6 py-2 rounded-full border border-white/50 shadow-sm">
+            邊玩邊學，挑戰你的單字力！選擇一個遊戲開始吧 👇
+        </p>
+    </header>
+
+    <!-- 遊戲卡片列表區 -->
+    <main class="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div id="games-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            <!-- 遊戲卡片會由 JavaScript 動態產生並插入到這裡 -->
+        </div>
+    </main>
+
+    <!-- 頁尾 -->
+    <footer class="relative z-10 mt-24 text-center pb-8 text-gray-500 font-medium">
+        <p>Created for fun and learning! 🌟</p>
+        <p class="text-sm mt-1">Host on GitHub Pages</p>
+    </footer>
+
+    <script>
+        /**
+         * ==========================================
+         * 📝 如何在這裡新增遊戲？
+         * ==========================================
+         * 如果你未來寫了新的遊戲（例如: 拼字小尖兵.html），
+         * 只需要在這個 `gamesData` 陣列的最後面，加上一組新的資料即可！
+         * 
+         * 格式如下：
+         * {
+         *   title: "遊戲名稱",
+         *   desc: "一句話介紹這個遊戲",
+         *   icon: "放一個代表性的 Emoji",
+         *   url: "你的HTML檔案名稱.html",
+         *   color: "tailwind的背景顏色class，例如 bg-blue-400"
+         * }
+         */
+        const gamesData = [
+            {
+                title: "太空接字",
+                desc: "單字掉下來前，點對意思接住它！考驗你的反應與字彙量。",
+                icon: "🚀",
+                url: "太空接字.html",
+                color: "bg-indigo-500"
+            },
+            {
+                title: "單字配對",
+                desc: "翻開卡片，找出英文與中文的正確配對，訓練記憶力！",
+                icon: "🧺",
+                url: "水果單字配對遊戲.html",
+                color: "bg-emerald-500"
+            },
+            {
+                title: "單字打地鼠",
+                desc: "仔細聽發音，眼明手快敲下正確意思的地鼠洞！",
+                icon: "🔨",
+                url: "單字打地鼠.html",
+                color: "bg-amber-600"
+            },
+            {
+                title: "單字保齡球",
+                desc: "聽到英文單字，抓準時機擊倒對應的保齡球瓶！",
+                icon: "🎳",
+                url: "單字保齡球.html",
+                color: "bg-orange-500"
+            },
+            {
+                title: "搶答單字",
+                desc: "聽到單字，越快按鈴、越快選出正確答案，分數越高！",
+                icon: "🔔",
+                url: "搶答單字.html",
+                color: "bg-rose-500"
+            },
+            {
+                title: "聽力賓果",
+                desc: "聽發音找單字，最快將格子連成一線就能大喊 BINGO！",
+                icon: "🎧",
+                url: "聽力賓果.html",
+                color: "bg-cyan-500"
+            }
+        ];
+
+        // 取得要插入卡片的容器
+        const gridContainer = document.getElementById('games-grid');
+
+        // 產生卡片的 HTML
+        function renderGames() {
+            gridContainer.innerHTML = ''; // 清空內容
+
+            gamesData.forEach(game => {
+                // 建立超連結元素
+                const cardLink = document.createElement('a');
+                cardLink.href = game.url;
+                cardLink.className = "group block bg-white rounded-[2rem] border-4 border-white shadow-xl card-hover-effect overflow-hidden relative decoration-none";
+
+                // 卡片內部的 HTML 結構
+                cardLink.innerHTML = `
+                    <!-- 卡片上半部：顏色與圖示 -->
+                    <div class="${game.color} h-40 flex items-center justify-center relative overflow-hidden">
+                        <!-- 背景裝飾圈圈 -->
+                        <div class="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 rounded-full bg-white opacity-10"></div>
+                        <div class="absolute bottom-0 left-0 -ml-8 -mb-8 w-24 h-24 rounded-full bg-black opacity-10"></div>
+                        
+                        <!-- 遊戲 Emoji 圖示 -->
+                        <span class="text-7xl relative z-10 icon-container drop-shadow-md">
+                            ${game.icon}
+                        </span>
+                    </div>
+                    
+                    <!-- 卡片下半部：文字與按鈕 -->
+                    <div class="p-6 relative">
+                        <h3 class="text-2xl font-extrabold text-gray-800 mb-2 group-hover:text-orange-500 transition-colors">
+                            ${game.title}
+                        </h3>
+                        <p class="text-gray-500 text-sm font-medium leading-relaxed mb-6 h-10 line-clamp-2">
+                            ${game.desc}
+                        </p>
+                        
+                        <!-- 底部按鈕區塊 -->
+                        <div class="flex items-center justify-between border-t border-gray-100 pt-4">
+                            <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Play Now</span>
+                            <div class="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center group-hover:bg-orange-500 transition-colors duration-300">
+                                <svg class="w-5 h-5 text-orange-500 group-hover:text-white transition-colors duration-300 transform translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // 將卡片加入到網格容器中
+                gridContainer.appendChild(cardLink);
+            });
+        }
+
+        // 網頁載入完成後執行渲染
+        window.addEventListener('DOMContentLoaded', renderGames);
+    </script>
+</body>
+</html>
